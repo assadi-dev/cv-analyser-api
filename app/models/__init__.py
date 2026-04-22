@@ -8,6 +8,7 @@ from app.models.analyse import Analyse
 from app.models.candidature import Candidature
 from app.models.contact import Contact
 from app.models.cv import CV
+from app.models.settings import Settings
 from app.models.user import User
 
-__all__ = ["User", "CV", "Candidature", "Contact", "Analyse"]
+__all__ = ["User", "Settings", "CV", "Candidature", "Contact", "Analyse"]
