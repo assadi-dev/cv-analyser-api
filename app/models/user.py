@@ -39,6 +39,10 @@ class User(BaseModel):
         comment="Authentication provider: email | google | linkedin",
     )
 
+    password: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    auth_provider_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     # -------------------------------------------------------------------------
     # Profile
     # -------------------------------------------------------------------------

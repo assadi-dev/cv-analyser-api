@@ -11,9 +11,26 @@ class RegisterRequest(AppBaseModel):
     password: str = Field(..., description="User password")
     first_name: str | None = Field(None, description="User first name")
     last_name: str | None = Field(None, description="User last name")
+    auth_provider: str = Field(..., description="Authentication provider")
+    auth_provider_id: str | None = Field(None, description="Authentication provider ID")
 
 
 class RegisterResponse(AppBaseModel):
+    """Response after a successful token exchange."""
+    api_token: str = Field(description="FastAPI autonomous JWT token")
+    token_type: str = Field(default="bearer")
+    expires_in_days: int = Field(description="Token validity in days")
+
+
+class LoginRequest(AppBaseModel):
+    """Request body for the token exchange endpoint."""
+    email: str = Field(..., description="User email")
+    password: str = Field(..., description="User password")
+    auth_provider: str = Field(..., description="Authentication provider")
+    auth_provider_id: str | None = Field(None, description="Authentication provider ID")
+
+
+class LoginResponse(AppBaseModel):
     """Response after a successful token exchange."""
     api_token: str = Field(description="FastAPI autonomous JWT token")
     token_type: str = Field(default="bearer")

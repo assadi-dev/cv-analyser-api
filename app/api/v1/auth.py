@@ -5,6 +5,8 @@ This is the ONLY bridge between better-auth (Next.js) and FastAPI.
 After the exchange, FastAPI operates fully autonomously with its own JWT.
 """
 
+from app.services.auth_service import AuthService
+from app.services.auth_validation import validate_auth_provider_fields, hash_password
 from fastapi.exceptions import HTTPException
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,16 +31,8 @@ async def register(
     """
     Register a new user.
     """
-    user_repo = UserRepository(db)
-    user = await user_repo.get_by_email(body.email)
-    if user:
-        raise HTTPException(status_code=400, detail="User already exists")
-    user = User(
-        email=body.email,
-        first_name=body.first_name,
-        last_name=body.last_name,
-    )
-    user = await user_repo.create_user(user)
+    auth_service = AuthService(db)
+    user = await auth_service.register_user(body)
     api_token = create_api_token(str(user.email))
 
     return RegisterResponse(
@@ -46,6 +40,9 @@ async def register(
         token_type="bearer",
         expires_in_days=settings.api_token_expire_days,
     )
+
+
+      
 
 
 @router.post(
