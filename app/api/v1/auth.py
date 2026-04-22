@@ -6,7 +6,6 @@ After the exchange, FastAPI operates fully autonomously with its own JWT.
 """
 
 from app.services.auth_service import AuthService
-from app.services.auth_validation import validate_auth_provider_fields, hash_password
 from fastapi.exceptions import HTTPException
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession

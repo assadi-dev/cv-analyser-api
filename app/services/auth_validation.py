@@ -1,8 +1,6 @@
-
-
 from fastapi.exceptions import HTTPException
 from app.schemas.auth import RegisterRequest
-import bcrypt
+
 
 def validate_auth_provider(auth_provider: str) -> bool:
     """
@@ -41,18 +39,3 @@ def validate_auth_provider_fields(body: RegisterRequest):
             raise HTTPException(status_code=400, detail="Auth provider ID is required for linkedin authentication")
 
 
-
-def hash_password(password: str) -> str:
-    """
-    Hash the password.
-    """
-    salt = bcrypt.gensalt()
-    hashed_password = bcrypt.hashpw(password.encode("utf-8"), salt)
-    return hashed_password.decode("utf-8")
-
-
-def verify_password(password: str, hashed_password: str) -> bool:
-    """
-    Verify the password.
-    """
-    return bcrypt.checkpw(password, hashed_password)
