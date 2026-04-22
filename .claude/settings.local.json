@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run:*)",
+      "Bash(uvicorn app.main:app --reload --port 8000)",
+      "Bash(uv sync:*)",
+      "Bash(python -m uvicorn app.main:app --reload --port 8000)",
+      "Bash(uv lock:*)"
+    ]
+  }
+}

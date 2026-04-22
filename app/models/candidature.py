@@ -1,0 +1,102 @@
+"""Candidature ORM model."""
+
+import uuid
+from typing import TYPE_CHECKING
+
+from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base import BaseModel
+
+if TYPE_CHECKING:
+    from app.models.analyse import Analyse
+    from app.models.contact import Contact
+    from app.models.cv import CV
+    from app.models.user import User
+
+
+class Candidature(BaseModel):
+    """
+    A job application entry tracked by the user.
+
+    Represents one job offer the user has analysed and/or applied to.
+    """
+
+    __tablename__ = "candidatures"
+
+    # -------------------------------------------------------------------------
+    # Foreign keys
+    # -------------------------------------------------------------------------
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    cv_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("cvs.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="CV used for this application",
+    )
+
+    # -------------------------------------------------------------------------
+    # Company & position
+    # -------------------------------------------------------------------------
+    company_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    company_city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    job_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    contract_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="CDI",
+        comment="CDI | CDD | Freelance | Stage | Alternance"
+    )
+    work_mode: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="hybrid",
+        comment="remote | hybrid | on-site"
+    )
+
+    # -------------------------------------------------------------------------
+    # Source
+    # -------------------------------------------------------------------------
+    source_platform: Mapped[str | None] = mapped_column(
+        String(100), nullable=True,
+        comment="e.g. LinkedIn, Indeed, WTTJ"
+    )
+    source_name: Mapped[str | None] = mapped_column(
+        String(255), nullable=True,
+        comment="Job offer display name on the platform"
+    )
+    source_url: Mapped[str | None] = mapped_column(
+        Text, nullable=True,
+        comment="Direct URL to the job offer"
+    )
+
+    # -------------------------------------------------------------------------
+    # Status
+    # -------------------------------------------------------------------------
+    status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="to_send",
+        comment="to_send | sent | interview | rejected | accepted",
+        index=True,
+    )
+
+    # -------------------------------------------------------------------------
+    # Notes
+    # -------------------------------------------------------------------------
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # -------------------------------------------------------------------------
+    # Relationships
+    # -------------------------------------------------------------------------
+    user: Mapped["User"] = relationship("User", back_populates="candidatures")
+    cv: Mapped["CV | None"] = relationship("CV", back_populates="candidatures")
+    contacts: Mapped[list["Contact"]] = relationship(
+        "Contact", back_populates="candidature", cascade="all, delete-orphan"
+    )
+    analyses: Mapped[list["Analyse"]] = relationship(
+        "Analyse", back_populates="candidature", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Candidature id={self.id} company={self.company_name} job={self.job_title}>"
