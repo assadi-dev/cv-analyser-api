@@ -35,7 +35,6 @@ async def register(
         raise HTTPException(status_code=400, detail="User already exists")
     user = User(
         email=body.email,
-        password=body.password,
         first_name=body.first_name,
         last_name=body.last_name,
     )
