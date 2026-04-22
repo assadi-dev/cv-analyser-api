@@ -5,6 +5,7 @@ This is the ONLY bridge between better-auth (Next.js) and FastAPI.
 After the exchange, FastAPI operates fully autonomously with its own JWT.
 """
 
+from app.schemas.auth import LoginRequest
 from app.services.auth_service import AuthService
 from fastapi.exceptions import HTTPException
 from fastapi import APIRouter, Depends
@@ -32,9 +33,29 @@ async def register(
     """
     auth_service = AuthService(db)
     user = await auth_service.register_user(body)
-    api_token = create_api_token(str(user.email))
+    api_token = create_api_token(str(user.id))
 
     return RegisterResponse(
+        api_token=api_token,
+        token_type="bearer",
+        expires_in_days=settings.api_token_expire_days,
+    )
+
+
+@router.post("/login",response_model=TokenResponse,summary="Login a user")
+async def login(
+    body: LoginRequest,
+    db: AsyncSession = Depends(get_db),
+    
+) -> TokenResponse:
+    """
+    Login a user.
+    """
+    auth_service = AuthService(db)
+    user = await auth_service.login_user(body)
+    api_token = create_api_token(str(user.id))
+
+    return TokenResponse(
         api_token=api_token,
         token_type="bearer",
         expires_in_days=settings.api_token_expire_days,

@@ -47,7 +47,7 @@ class AuthService:
 
 
 
-    async def login_user(self, inputs: LoginRequest) -> LoginResponse:
+    async def login_user(self, inputs: LoginRequest) -> User:
         """
         Login a user.
         """
@@ -61,8 +61,4 @@ class AuthService:
 
         api_token = create_api_token(str(user.id))
 
-        return LoginResponse(
-            api_token=api_token,
-            token_type="bearer",
-            expires_in_days=settings.api_token_expire_days,
-        )
+        return  user
