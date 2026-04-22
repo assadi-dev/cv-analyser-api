@@ -75,3 +75,6 @@ class UserResponse(IDSchema, TimestampSchema):
     ats_threshold: int
     recommendation_detail: str
     is_active: bool
+
+
+

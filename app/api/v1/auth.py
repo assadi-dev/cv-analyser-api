@@ -5,6 +5,7 @@ This is the ONLY bridge between better-auth (Next.js) and FastAPI.
 After the exchange, FastAPI operates fully autonomously with its own JWT.
 """
 
+from fastapi.exceptions import HTTPException
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,10 +14,39 @@ from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.security import create_api_token, verify_better_auth_session
 from app.repositories.user_repo import UserRepository
-from app.schemas.auth import TokenExchangeRequest, TokenResponse, UserSessionInfo
+from app.schemas.auth import RegisterRequest, RegisterResponse, TokenExchangeRequest, TokenResponse, UserSessionInfo
+from app.models.user import User
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+@router.post("/register",response_model=RegisterResponse,summary="Register a new user")
+async def register(
+    body: RegisterRequest,
+    db: AsyncSession = Depends(get_db),
+    
+) -> RegisterResponse:
+    """
+    Register a new user.
+    """
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_email(body.email)
+    if user:
+        raise HTTPException(status_code=400, detail="User already exists")
+    user = User(
+        email=body.email,
+        password=body.password,
+        first_name=body.first_name,
+        last_name=body.last_name,
+    )
+    user = await user_repo.create_user(user)
+    api_token = create_api_token(str(user.email))
+
+    return RegisterResponse(
+        api_token=api_token,
+        token_type="bearer",
+        expires_in_days=settings.api_token_expire_days,
+    )
 
 
 @router.post(

@@ -138,11 +138,28 @@ async def verify_better_auth_session(session_token: str) -> dict[str, Any]:
                 extra={
                     "status_code": response.status_code,
                     "better_auth_url": settings.better_auth_url,
+                    "response_text": response.text[:500] if response.text else None,
                 },
             )
             raise UnauthorizedError(detail="Invalid or expired session")
 
-        data: dict[str, Any] = response.json()
+        try:
+            data: dict[str, Any] = response.json()
+        except Exception as exc:
+            logger.error(
+                "Failed to parse better-auth response as JSON",
+                exc_info=exc,
+                extra={"response_text": response.text[:500]},
+            )
+            raise UnauthorizedError(detail="Invalid session response format") from exc
+
+        if not data or not isinstance(data, dict):
+            logger.warning(
+                "better-auth response is empty or not a dict",
+                extra={"response": str(data)[:100]},
+            )
+            raise UnauthorizedError(detail="Invalid session response format")
+
         user = data.get("user")
 
         if not user:

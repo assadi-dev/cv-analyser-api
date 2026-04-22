@@ -5,7 +5,11 @@
       "Bash(uvicorn app.main:app --reload --port 8000)",
       "Bash(uv sync:*)",
       "Bash(python -m uvicorn app.main:app --reload --port 8000)",
-      "Bash(uv lock:*)"
+      "Bash(uv lock:*)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -X POST http://localhost:8000/api/v1/auth/token -H 'Content-Type: application/json' -d '{\"session_token\":\"test-token\"}')",
+      "Bash(pkill -f uvicorn)",
+      "Bash(curl -X POST http://localhost:8000/api/v1/auth/token -H 'Content-Type: application/json' -d '{\"session_token\":\"test\"}')"
     ]
   }
 }

@@ -5,6 +5,21 @@ from pydantic import Field
 from app.schemas.common import AppBaseModel
 
 
+class RegisterRequest(AppBaseModel):
+    """Request body for the token exchange endpoint."""
+    email: str = Field(..., description="User email")
+    password: str = Field(..., description="User password")
+    first_name: str | None = Field(None, description="User first name")
+    last_name: str | None = Field(None, description="User last name")
+
+
+class RegisterResponse(AppBaseModel):
+    """Response after a successful token exchange."""
+    api_token: str = Field(description="FastAPI autonomous JWT token")
+    token_type: str = Field(default="bearer")
+    expires_in_days: int = Field(description="Token validity in days")
+
+
 class TokenExchangeRequest(AppBaseModel):
     """Request body for the token exchange endpoint."""
 
