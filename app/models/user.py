@@ -24,15 +24,6 @@ class User(BaseModel):
     """Application user profile."""
 
     __tablename__ = "users"
-    # -------------------------------------------------------------------------
-    # Foreign key
-    # -------------------------------------------------------------------------
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
 
     email: Mapped[str] = mapped_column(
         String(255),

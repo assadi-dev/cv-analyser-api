@@ -22,8 +22,43 @@ class UserRepository(BaseRepository[User]):
 
 
     async def create_user(self, user: User) -> User:
-        """Creates a new user."""
-        return await self.create(user)
+        """Persists a new user entity."""
+        self.db.add(user)
+        await self.db.flush()
+        await self.db.refresh(user)
+        return user
+
+
+    async def get_or_create_from_session(
+        self,
+        better_auth_id: str,
+        email: str,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        avatar_url: str | None = None,
+        auth_provider: str = "email",
+    ) -> tuple[User, bool]:
+        """
+        Syncs a user from better-auth session.
+        If user doesn't exist by email, creates it.
+        """
+        user = await self.get_by_email(email)
+        if user:
+            return user, False
+
+        # Create new user
+        new_user = User(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            avatar_url=avatar_url,
+            auth_provider=auth_provider,
+        )
+        
+        self.db.add(new_user)
+        await self.db.flush()
+        await self.db.refresh(new_user)
+        return new_user, True
 
 
     async def update_user(self, user: User) -> User:
