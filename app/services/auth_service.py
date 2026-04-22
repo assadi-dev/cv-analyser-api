@@ -57,7 +57,7 @@ class AuthService:
 
         if inputs.auth_provider == "email":
             if not verify_password(inputs.password, user.password):
-                raise HTTPException(status_code=401, detail="Invalid password")
+                raise HTTPException(status_code=401, detail="Invalid credentials")
 
         api_token = create_api_token(str(user.id))
 
