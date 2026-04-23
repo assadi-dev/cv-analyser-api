@@ -2,6 +2,7 @@
 Settings router — user profile, AI provider, and preferences.
 """
 
+from app.repositories.preference_repo import PreferenceRepository
 from fastapi import APIRouter, Depends, HTTPException
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,10 +20,23 @@ from app.schemas.user import (
     UserProfileUpdate,
     UserResponse,
 )
+from app.schemas.preference import PreferencesResponseByUser
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/preferences", tags=["Preferences"])
 
+@router.get(
+    "/profile",
+    response_model=PreferencesResponseByUser,
+    summary="Get user profile preferences",
+)
+async def get_preferences(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> PreferencesResponseByUser:
+    repo = PreferenceRepository(db)
+    preferences = await repo.get_by_user_id(uuid.UUID(user_id))
+    return PreferencesResponseByUser.model_validate(preferences)
 
 @router.patch(
     "/profile",
@@ -42,7 +56,7 @@ async def update_profile(
 
 
 @router.patch(
-    "",
+    "/analysis",
     response_model=UserResponse,
     summary="Update analysis preferences (language, ATS threshold, detail level)",
 )

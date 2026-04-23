@@ -5,8 +5,8 @@ This is the ONLY bridge between better-auth (Next.js) and FastAPI.
 After the exchange, FastAPI operates fully autonomously with its own JWT.
 """
 
-from app.core.dependencies import get_current_user_id
-from app.schemas.auth import RemoveUserRequest
+from app.factory.token_response_factory import TokenResponseFactory
+from app.core.security import get_jwt_payload
 from app.schemas.auth import LoginRequest
 from app.services.auth_service import AuthService
 from fastapi.exceptions import HTTPException
@@ -18,30 +18,26 @@ from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.security import create_api_token, verify_better_auth_session
 from app.repositories.user_repo import UserRepository
-from app.schemas.auth import RegisterRequest, RegisterResponse, TokenExchangeRequest, TokenResponse, UserSessionInfo
+from app.schemas.auth import RegisterRequest, TokenExchangeRequest, TokenResponse
 from app.models.user import User
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-@router.post("/register",response_model=RegisterResponse,summary="Register a new user")
+@router.post("/register",response_model=TokenResponse,summary="Register a new user")
 async def register(
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
     
-) -> RegisterResponse:
+) -> TokenResponse:
     """
     Register a new user.
     """
     auth_service = AuthService(db)
     user = await auth_service.register_user(body)
-    api_token = create_api_token(str(user.id))
-
-    return RegisterResponse(
-        api_token=api_token,
-        token_type="bearer",
-        expires_in_days=settings.api_token_expire_days,
-    )
+    response = TokenResponseFactory.build_token_response(str(user.id))
+    logger.info("User registered successfully", extra={"user_id": str(user.id)})
+    return response
 
 
 @router.post("/login",response_model=TokenResponse,summary="Login a user")
@@ -55,13 +51,9 @@ async def login(
     """
     auth_service = AuthService(db)
     user = await auth_service.login_user(body)
-    api_token = create_api_token(str(user.id))
-
-    return TokenResponse(
-        api_token=api_token,
-        token_type="bearer",
-        expires_in_days=settings.api_token_expire_days,
-    )
+    response = TokenResponseFactory.build_token_response(str(user.id))
+    logger.info("User logged in successfully", extra={"user_id": str(user.id)})
+    return response
 
 
 

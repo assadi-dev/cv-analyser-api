@@ -24,11 +24,13 @@ class PreferenceRepository:
         """
         return await self.get_by_key("user_id")
 
-    async def set_user_id(self, user_id: str) -> None:
+    async def get_by_user_id(self, user_id: uuid.UUID) -> Preference:
         """
-        Set the user ID in the settings.
+        Get the settings for a user.
         """
-        await self.set_key("user_id", user_id)
+        stmt = select(Preference).where(Preference.user_id == user_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
 
     async def create_settings(self,user_id: str) -> Preference:

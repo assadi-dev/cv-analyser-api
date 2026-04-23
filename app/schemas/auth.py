@@ -1,5 +1,6 @@
 """Auth schemas — token exchange and session."""
 
+from datetime import datetime
 from pydantic import Field
 
 from app.schemas.common import AppBaseModel
@@ -20,13 +21,6 @@ class RegisterRequest(AppBaseModel):
     
 
 
-class RegisterResponse(AppBaseModel):
-    """Response after a successful token exchange."""
-    api_token: str = Field(description="FastAPI autonomous JWT token")
-    token_type: str = Field(default="bearer")
-    expires_in_days: int = Field(description="Token validity in days")
-
-
 class LoginRequest(AppBaseModel):
     """Request body for the token exchange endpoint."""
     email: str = Field(..., description="User email")
@@ -37,9 +31,9 @@ class LoginRequest(AppBaseModel):
 
 class LoginResponse(AppBaseModel):
     """Response after a successful token exchange."""
-    api_token: str = Field(description="FastAPI autonomous JWT token")
-    token_type: str = Field(default="bearer")
-    expires_in_days: int = Field(description="Token validity in days")
+    token: str = Field(description="FastAPI autonomous JWT token")
+    type: str = Field(default="bearer")
+    expires_at: datetime = Field(description="Token validity in days")
 
 
 class RemoveUserRequest(AppBaseModel):
@@ -61,8 +55,9 @@ class TokenExchangeRequest(AppBaseModel):
 class TokenResponse(AppBaseModel):
     """Response after a successful token exchange."""
 
-    api_token: str = Field(description="FastAPI autonomous JWT token")
-    token_type: str = Field(default="bearer")
+    token: str = Field(description="FastAPI autonomous JWT token")
+    type: str = Field(default="bearer")
+    expires_at: datetime = Field(description="Token validity in days")
     expires_in_days: int = Field(description="Token validity in days")
 
 
@@ -74,3 +69,12 @@ class UserSessionInfo(AppBaseModel):
     first_name: str | None = None
     last_name: str | None = None
     avatar_url: str | None = None
+
+
+class JWTPayload(AppBaseModel):
+    sub: str = Field(description="User ID")
+    iat: datetime = Field(description="Token issuance time")
+    exp: datetime = Field(description="Token expiration time")
+    type: str = Field(description="Token type")
+    
+    

@@ -5,6 +5,7 @@ FastAPI generates and verifies its own tokens independently of better-auth.
 The only bridge with better-auth is the token exchange endpoint (/auth/token).
 """
 
+from app.schemas.auth import JWTPayload
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -68,6 +69,42 @@ def create_api_token(user_id: str) -> str:
     token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
     logger.info("API token created", extra={"user_id": user_id})
     return token
+
+def get_jwt_payload(token: str) -> JWTPayload:
+    """
+    Generates a JWT token for FastAPI.
+
+    Args:
+        user_id: The authenticated user's UUID string.
+
+    Returns:
+        JWT payload.
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+        )
+    except JWTError as exc:
+        if "expired" in str(exc).lower():
+            raise ExpiredTokenError() from exc
+        raise InvalidTokenError() from exc
+
+    user_id: str | None = payload.get("sub") 
+    token_type: str | None = payload.get("type")
+
+    if not user_id:
+        raise InvalidTokenError(detail="Token missing subject claim")
+
+    if token_type != "api_token":
+        raise InvalidTokenError(detail="Invalid token type")
+
+    if user_id == "None":
+        return None
+
+    return JWTPayload(**payload)
+  
 
 
 def decode_api_token(token: str) -> str:

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import Field, model_validator
@@ -25,3 +26,15 @@ class PreferenceResponse(AppBaseModel):
     preferred_language: str = Field(..., description="Preferred language")
     ats_threshold: int = Field(..., description="ATS threshold")
     recommendation_detail: str = Field(..., description="Recommendation detail")
+
+
+
+class PreferencesResponseByUser(AppBaseModel):
+    """User preferences response."""
+    ai_provider: str = Field(..., description="AI provider")
+    ai_model: str = Field(..., description="AI model")
+    preferred_language: str = Field(..., description="Preferred language")
+    ats_threshold: int = Field(..., description="ATS threshold")
+    recommendation_detail: str = Field(..., description="Recommendation detail")
+    created_at: datetime = Field(..., description="Created at")
+    updated_at: datetime = Field(..., description="Updated at")
