@@ -2,6 +2,8 @@
 Settings router — user profile, AI provider, and preferences.
 """
 
+from app.factory.preference_factory import PreferenceFactory
+from app.schemas.preference import PreferenceUpdateRequest
 from app.schemas.user import UserProfileUpdateResponse
 from app.services.preference_services import PreferenceService
 from fastapi import APIRouter, Depends, HTTPException
@@ -55,18 +57,17 @@ async def update_profile(
 
 @router.patch(
     "/analysis",
-    response_model=UserResponse,
+    response_model=PreferencesResponseByUser,
     summary="Update analysis preferences (language, ATS threshold, detail level)",
 )
 async def update_preferences(
-    body: UserPreferencesUpdate,
+    body: PreferenceUpdateRequest,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> UserResponse:
+) -> PreferencesResponseByUser:
     preference_service = PreferenceService(db)
-    # We want a UserResponse, so we might need a method that returns the full user
-    user = await preference_service.update_analysis_preferences(user_id, body)
-    return UserResponse.model_validate(user)
+    preference = await preference_service.update_analysis_preferences(user_id, body)
+    return preference
 
 
 @router.put(

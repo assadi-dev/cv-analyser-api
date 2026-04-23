@@ -28,6 +28,17 @@ class PreferenceResponse(AppBaseModel):
     recommendation_detail: str = Field(..., description="Recommendation detail")
 
 
+class PreferenceUpdateRequest(AppBaseModel):
+    """Update preference request."""
+    ai_provider: str | None = Field(None, description="AI provider")
+    ai_model: str | None = Field(None, description="AI model")
+    ai_api_key_encrypted: str | None = Field(None, description="AI API key encrypted")
+    ollama_base_url: str | None = Field(None, description="Ollama base URL")
+    preferred_language: str | None = Field(None, description="Preferred language")
+    ats_threshold: int | None = Field(None, description="ATS threshold")
+    recommendation_detail: str | None = Field(None, description="Recommendation detail")
+    
+
 
 class PreferencesResponseByUser(AppBaseModel):
     """User preferences response."""

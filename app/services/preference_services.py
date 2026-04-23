@@ -1,3 +1,4 @@
+from app.factory.preference_factory import PreferenceFactory
 from typing import Any
 from app.factory.user_factory import UserFactory
 from app.schemas.user import UserProfileUpdateResponse
@@ -32,7 +33,7 @@ class PreferenceService:
         preferences = await self.preference_repo.get_by_user_id(uuid.UUID(user_id))
         return PreferencesResponseByUser.model_validate(preferences)
 
-    async def update_analysis_preferences(self, user_id: str, inputs: Any) -> Any:
+    async def update_analysis_preferences(self, user_id: str, inputs: Any) -> PreferencesResponseByUser:
         """
         Update the analysis preferences for a user.
         """
@@ -47,7 +48,7 @@ class PreferenceService:
         
         await self.db.commit()
         await self.db.refresh(user)
-        return user
+        return PreferencesResponseByUser.model_validate(user.preferences)
 
     async def update_user_profile(self, user_id: str, inputs: Any) -> UserProfileUpdateResponse:
         """
