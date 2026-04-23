@@ -19,7 +19,7 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 
 async def get_current_user_id(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
-) -> str:
+) -> str | None:
     """
     FastAPI dependency — extracts and validates the API token from Authorization header.
 

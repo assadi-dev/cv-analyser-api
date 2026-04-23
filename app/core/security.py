@@ -95,7 +95,7 @@ def decode_api_token(token: str) -> str:
             raise ExpiredTokenError() from exc
         raise InvalidTokenError() from exc
 
-    user_id: str | None = payload.get("sub")
+    user_id: str | None = payload.get("sub") 
     token_type: str | None = payload.get("type")
 
     if not user_id:
@@ -103,6 +103,9 @@ def decode_api_token(token: str) -> str:
 
     if token_type != "api_token":
         raise InvalidTokenError(detail="Invalid token type")
+
+    if user_id == "None":
+        return None
 
     return user_id
 

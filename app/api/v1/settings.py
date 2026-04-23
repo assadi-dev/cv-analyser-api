@@ -2,6 +2,7 @@
 Settings router — user profile, AI provider, and preferences.
 """
 
+from http.client import HTTPException
 from app.schemas.auth import RemoveUserRequest
 import uuid
 
@@ -35,8 +36,13 @@ async def get_me(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> UserResponse:
+
+    if not user_id:
+        raise NotFoundError("User")
+
     repo = UserRepository(db)
     user = await repo.get_by_id(uuid.UUID(user_id))
+    
     return UserResponse.model_validate({
         "id": str(user.id),
         "email": user.email,
@@ -55,6 +61,7 @@ async def get_me(
         "ats_threshold": 80,
         "recommendation_detail": "detailed",
         })
+
 
 
 @router.patch(

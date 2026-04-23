@@ -43,7 +43,8 @@ class AuthService:
             auth_provider=inputs.auth_provider,
             auth_provider_id=inputs.auth_provider_id,
         )
-        user = await self.user_repo.create_user(user)
+        #user = await self.user_repo.create_user(user)
+
         return user
 
 
