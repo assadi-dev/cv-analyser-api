@@ -24,44 +24,7 @@ from app.schemas.user import (
 )
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/settings", tags=["Settings"])
-
-
-@router.get(
-    "/me",
-    response_model=UserResponse,
-    summary="Get current user's full profile",
-)
-async def get_me(
-    user_id: str = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
-) -> UserResponse:
-
-    if not user_id:
-        raise NotFoundError("User")
-
-    repo = UserRepository(db)
-    user = await repo.get_by_id(uuid.UUID(user_id))
-    
-    return UserResponse.model_validate({
-        "id": str(user.id),
-        "email": user.email,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "full_name": f"{user.first_name} {user.last_name}",
-        "avatar_url": user.avatar_url,
-        "auth_provider": user.auth_provider,
-        "professional_title": user.professional_title,
-        "is_active": user.is_active,
-        "created_at": user.created_at,
-        "updated_at": user.updated_at,
-        "ai_provider": "ollama",
-        "ai_model": "llama3.2",
-        "preferred_language": "fr",
-        "ats_threshold": 80,
-        "recommendation_detail": "detailed",
-        })
-
+router = APIRouter(prefix="/preferences", tags=["Preferences"])
 
 
 @router.patch(
@@ -81,7 +44,7 @@ async def update_profile(
 
 
 @router.patch(
-    "/preferences",
+    "",
     response_model=UserResponse,
     summary="Update analysis preferences (language, ATS threshold, detail level)",
 )
@@ -92,7 +55,7 @@ async def update_preferences(
 ) -> UserResponse:
     repo = UserRepository(db)
     user = await repo.get_by_id_with_settings(uuid.UUID(user_id))
-    await repo.update(user.settings, **body.model_dump(exclude_none=True))
+    await repo.update(user.preferences, **body.model_dump(exclude_none=True))
     await db.refresh(user)
     return UserResponse.model_validate(user)
 

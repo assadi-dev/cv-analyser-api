@@ -88,12 +88,17 @@ class UserResponse(IDSchema, TimestampSchema):
     def extract_settings_fields(cls, data: Any) -> dict[str, Any]:
         """Extract settings fields from the related Settings object."""
 
+        print("data-sync-693", data.preferences.ai_provider)
+        return data
+
         if not isinstance(data, dict):
             # It's an ORM object with a settings relationship
             if hasattr(data, "preferences") and data.preferences:
                 preferences = data.preferences
                 data.ai_provider = preferences.ai_provider
                 data.ai_model = preferences.ai_model
+                data.ai_api_key = preferences.ai_api_key
+                data.ollama_base_url = preferences.ollama_base_url
                 data.preferred_language = preferences.preferred_language
                 data.ats_threshold = preferences.ats_threshold
                 data.recommendation_detail = preferences.recommendation_detail
@@ -105,9 +110,11 @@ class UserResponse(IDSchema, TimestampSchema):
             if isinstance(preferences, dict):
                 data["ai_provider"] = preferences.get("ai_provider")
                 data["ai_model"] = preferences.get("ai_model")
-                data["preferred_language"] = settings.get("preferred_language")
-                data["ats_threshold"] = settings.get("ats_threshold")
-                data["recommendation_detail"] = settings.get("recommendation_detail")
+                data["ai_api_key"] = preferences.get("ai_api_key")
+                data["ollama_base_url"] = preferences.get("ollama_base_url")
+                data["preferred_language"] = preferences.get("preferred_language")
+                data["ats_threshold"] = preferences.get("ats_threshold")
+                data["recommendation_detail"] = preferences.get("recommendation_detail")
 
         return data
 

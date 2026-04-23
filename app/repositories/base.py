@@ -57,6 +57,14 @@ class BaseRepository(Generic[ModelType]):
             )
         return entity
 
+    
+    async def get_user_with_preferences(self, user_id: uuid.UUID) -> ModelType | None:
+        """Fetches an entity by its UUID primary key. Returns None if not found."""
+        result = await self.db.execute(
+            select(self.model).where(self.model.id == user_id).options(selectinload(self.model.preferences))  # type: ignore[attr-defined]
+        )
+        return result.scalar_one_or_none()
+    
     async def list_all(
         self,
         *,

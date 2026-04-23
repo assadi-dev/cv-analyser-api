@@ -43,7 +43,11 @@ class Preference(BaseModel):
         nullable=True,
         comment="User's AI provider API key — AES-256 encrypted at rest",
     )
-
+    ollama_base_url: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="User's Ollama server URL",
+    )
     # -------------------------------------------------------------------------
     # Analysis preferences
     # -------------------------------------------------------------------------

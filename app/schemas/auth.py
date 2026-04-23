@@ -15,6 +15,7 @@ class RegisterRequest(AppBaseModel):
     auth_provider_id: str | None = Field(None, description="Authentication provider ID")
     professional_title: str | None = Field(None, description="User professional title")
     email_verified: bool = Field(False, description="Email verification status")
+    avatar_url: str | None = Field(None, description="User avatar URL")
     preferred_language: str | None = Field("fr", description="User preferred language")
     
 

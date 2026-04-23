@@ -2,6 +2,7 @@
 
 
 
+from app.factory.user_factory import UserFactory
 from app.repositories.preference_repo import PreferenceRepository
 from app.models import Preference
 from app.core.security import create_api_token,verify_password,hash_password
@@ -36,21 +37,12 @@ class AuthService:
             raise HTTPException(status_code=400, detail="User already exists")
 
         validate_auth_provider_fields(inputs)
-
         hashed_password = hash_password(inputs.password)
+        inputs.password = hashed_password
     
-        user = User(
-            email=inputs.email,
-            first_name=inputs.first_name,
-            last_name=inputs.last_name,
-            password=hashed_password,
-            auth_provider=inputs.auth_provider,
-            auth_provider_id=inputs.auth_provider_id,
-            professional_title=inputs.professional_title,
-        )
-        #user = await self.user_repo.create_user(user)
-        await self.preference_repo.create_settings("ddd-ddd-ddd")
-
+        user = UserFactory.register_request_to_model(inputs)
+        user = await self.user_repo.create_user(user)
+        await self.preference_repo.create_settings(str(user.id))
         return user
 
 

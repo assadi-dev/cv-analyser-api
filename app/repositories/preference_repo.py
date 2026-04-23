@@ -1,5 +1,6 @@
 """ Settings repository. """
 
+from app.factory.preference_factory import PreferenceFactory
 import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,22 +31,17 @@ class PreferenceRepository:
         await self.set_key("user_id", user_id)
 
 
-    async def create_settings(self,user_id: str) -> None:
+    async def create_settings(self,user_id: str) -> Preference:
         """
         Initialize default preferences for a user.
         """
-        preference = Preference(
-            user_id=user_id,
-        
-     
-        )
+        preferences = PreferenceFactory.generate_model(user_id)
 
-        print(preference.ats_threshold)
-
-    """     self.db.add(preference)
+        self.db.add(preferences)
         await self.db.commit()
-        await self.db.refresh(preference)
-        return preference """
+        await self.db.refresh(preferences)
+        return preferences 
+    
 
     async def get_settings(self, user_id: str) -> dict:
         """
