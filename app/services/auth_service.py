@@ -10,6 +10,7 @@ from app.models.user import User
 from app.schemas.auth import RegisterRequest
 from app.services.auth_validation import validate_auth_provider_fields
 from fastapi.exceptions import HTTPException
+from app.core.exceptions import BadRequestError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -62,3 +63,19 @@ class AuthService:
         api_token = create_api_token(str(user.id))
 
         return  user
+
+    async def remove_user(self, user_id: str) -> None:
+        """
+        Delete a user account.
+        """
+
+
+        user = await self.user_repo.get_user_by_id(user_id)
+        if not user:
+            # Should not happen as it is called behind auth, but better be safe
+            from app.core.exceptions import NotFoundError
+            raise NotFoundError(resource="User", resource_id=user_id)
+
+        await self.user_repo.delete_user(user)
+        await self.db.commit()
+        logger.info(f"User {user_id} removed successfully")

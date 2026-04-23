@@ -43,7 +43,7 @@ class LoginResponse(AppBaseModel):
 class RemoveUserRequest(AppBaseModel):
     """Request body for removing a user."""
 
-    confirm: bool = Field(..., description="Confirmation")  
+    confirm: bool = Field(False, description="Confirmation")  
 
 
 class TokenExchangeRequest(AppBaseModel):
