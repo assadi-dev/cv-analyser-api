@@ -66,20 +66,28 @@ class UserResponse(IDSchema, TimestampSchema):
     email: str
     first_name: str | None
     last_name: str | None
+    full_name: str | None
     professional_title: str | None
     avatar_url: str | None
     auth_provider: str
-    ai_provider: str
+    ai_provider: AIProvider
     ai_model: str
-    preferred_language: str
+    preferred_language: Language
     ats_threshold: int
-    recommendation_detail: str
+    recommendation_detail: RecommendationDetail
     is_active: bool
+
+    @model_validator(mode="after")
+    def set_full_name(self) -> "UserResponse":
+        if self.first_name and self.last_name:
+            self.full_name = f"{self.first_name} {self.last_name}"
+        return self
 
     @model_validator(mode="before")
     @classmethod
     def extract_settings_fields(cls, data: Any) -> dict[str, Any]:
         """Extract settings fields from the related Settings object."""
+
         if not isinstance(data, dict):
             # It's an ORM object with a settings relationship
             if hasattr(data, "settings") and data.settings:

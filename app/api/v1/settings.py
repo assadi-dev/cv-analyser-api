@@ -27,27 +27,33 @@ router = APIRouter(prefix="/settings", tags=["Settings"])
 
 @router.get(
     "/me",
-    response_model=dict,
+    response_model=UserResponse,
     summary="Get current user's full profile",
 )
 async def get_me(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> UserResponse:
     repo = UserRepository(db)
     user = await repo.get_by_id(uuid.UUID(user_id))
-    return {
-        "id": user.id,
+    return UserResponse.model_validate({
+        "id": str(user.id),
         "email": user.email,
         "first_name": user.first_name,
         "last_name": user.last_name,
+        "full_name": f"{user.first_name} {user.last_name}",
         "avatar_url": user.avatar_url,
         "auth_provider": user.auth_provider,
         "professional_title": user.professional_title,
         "is_active": user.is_active,
         "created_at": user.created_at,
         "updated_at": user.updated_at,
-        }
+        "ai_provider": "ollama",
+        "ai_model": "llama3.2",
+        "preferred_language": "fr",
+        "ats_threshold": 80,
+        "recommendation_detail": "detailed",
+        })
 
 
 @router.patch(
