@@ -1,8 +1,12 @@
 """User repository."""
 
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from app.core.exceptions import NotFoundError
 from app.models.user import User
 from app.repositories.base import BaseRepository
 
@@ -12,6 +16,18 @@ class UserRepository(BaseRepository[User]):
 
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(User, db)
+
+    async def get_by_id_with_settings(self, user_id: uuid.UUID) -> User:
+        """Fetches a user by ID with settings eagerly loaded. Raises NotFoundError if not found."""
+        result = await self.db.execute(
+            select(User)
+            .where(User.id == user_id)
+            .options(selectinload(User.settings))
+        )
+        user = result.unique().scalar_one_or_none()
+        if user is None:
+            raise NotFoundError(resource="User", resource_id=str(user_id))
+        return user
 
     async def get_by_email(self, email: str) -> User | None:
         """Fetches a user by their email address."""

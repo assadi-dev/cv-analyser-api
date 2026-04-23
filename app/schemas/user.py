@@ -1,9 +1,9 @@
 """User and settings Pydantic schemas."""
 
 import uuid
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, model_validator
 
 from app.schemas.common import AppBaseModel, IDSchema, TimestampSchema
 
@@ -75,6 +75,33 @@ class UserResponse(IDSchema, TimestampSchema):
     ats_threshold: int
     recommendation_detail: str
     is_active: bool
+
+    @model_validator(mode="before")
+    @classmethod
+    def extract_settings_fields(cls, data: Any) -> dict[str, Any]:
+        """Extract settings fields from the related Settings object."""
+        if not isinstance(data, dict):
+            # It's an ORM object with a settings relationship
+            if hasattr(data, "settings") and data.settings:
+                settings = data.settings
+                data.ai_provider = settings.ai_provider
+                data.ai_model = settings.ai_model
+                data.preferred_language = settings.preferred_language
+                data.ats_threshold = settings.ats_threshold
+                data.recommendation_detail = settings.recommendation_detail
+            return data
+
+        # It's already a dict, copy settings fields if available
+        if "settings" in data and data["settings"]:
+            settings = data["settings"]
+            if isinstance(settings, dict):
+                data["ai_provider"] = settings.get("ai_provider")
+                data["ai_model"] = settings.get("ai_model")
+                data["preferred_language"] = settings.get("preferred_language")
+                data["ats_threshold"] = settings.get("ats_threshold")
+                data["recommendation_detail"] = settings.get("recommendation_detail")
+
+        return data
 
 
 
