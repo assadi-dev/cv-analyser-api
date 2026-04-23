@@ -31,30 +31,8 @@ async def get_me(
 
     repo = UserRepository(db)
     user = await repo.get_user_with_preferences(uuid.UUID(user_id))
-
- 
-    user.id = str(user.id)
-    user_response = UserResponse.model_validate(user)
     
-    return UserResponse.model_validate({
-        "id": str(user.id),
-        "email": user.email,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "full_name": f"{user.first_name} {user.last_name}",
-        "avatar_url": user.avatar_url,
-        "auth_provider": user.auth_provider,
-        "professional_title": user.professional_title,
-        "is_active": user.is_active,
-        "created_at": user.created_at,
-        "updated_at": user.updated_at,
-        "ai_provider": "ollama",
-        "ai_model": "llama3.2",
-        "preferred_language": "fr",
-        "ats_threshold": 80,
-        "recommendation_detail": "detailed",
-        })
-
+    return UserResponse.model_validate(user)
 
 
 

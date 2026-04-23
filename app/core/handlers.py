@@ -19,6 +19,7 @@ import uuid
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError as PydanticValidationError
@@ -42,16 +43,17 @@ def _error_response(
     request_id: str,
 ) -> JSONResponse:
     """Builds a standardized JSON error response."""
+    content = {
+        "error": {
+            "code": error_code,
+            "message": message,
+            "context": context or {},
+        },
+        "request_id": request_id,
+    }
     return JSONResponse(
         status_code=status_code,
-        content={
-            "error": {
-                "code": error_code,
-                "message": message,
-                "context": context or {},
-            },
-            "request_id": request_id,
-        },
+        content=jsonable_encoder(content),
     )
 
 

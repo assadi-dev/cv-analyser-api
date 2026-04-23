@@ -2,11 +2,8 @@
 Settings router — user profile, AI provider, and preferences.
 """
 
-from http.client import HTTPException
-from app.schemas.auth import RemoveUserRequest
+from fastapi import APIRouter, Depends, HTTPException
 import uuid
-
-from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -40,6 +37,7 @@ async def update_profile(
     repo = UserRepository(db)
     user = await repo.get_by_id_with_settings(uuid.UUID(user_id))
     updated = await repo.update(user, **body.model_dump(exclude_none=True))
+    await db.commit()
     return UserResponse.model_validate(updated)
 
 
@@ -56,6 +54,7 @@ async def update_preferences(
     repo = UserRepository(db)
     user = await repo.get_by_id_with_settings(uuid.UUID(user_id))
     await repo.update(user.preferences, **body.model_dump(exclude_none=True))
+    await db.commit()
     await db.refresh(user)
     return UserResponse.model_validate(user)
 
@@ -81,11 +80,12 @@ async def update_ai_provider(
         encrypted_key = ProviderService.encrypt_api_key(body.ai_api_key)
 
     await repo.update(
-        user.settings,
+        user.preferences,
         ai_provider=body.ai_provider,
         ai_model=body.ai_model,
         ai_api_key_encrypted=encrypted_key,
     )
+    await db.commit()
 
     logger.info(
         "AI provider updated",
