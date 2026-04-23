@@ -1,6 +1,9 @@
 
 
 
+
+from app.repositories.preference_repo import PreferenceRepository
+from app.models import Preference
 from app.core.security import create_api_token,verify_password,hash_password
 from app.schemas.auth import LoginResponse
 from app.schemas.auth import LoginRequest
@@ -21,6 +24,7 @@ class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.user_repo = UserRepository(db)
+        self.preference_repo = PreferenceRepository(db)
 
 
     async def register_user(self, inputs: RegisterRequest) -> User:
@@ -42,8 +46,10 @@ class AuthService:
             password=hashed_password,
             auth_provider=inputs.auth_provider,
             auth_provider_id=inputs.auth_provider_id,
+            professional_title=inputs.professional_title,
         )
         #user = await self.user_repo.create_user(user)
+        await self.preference_repo.create_settings("ddd-ddd-ddd")
 
         return user
 

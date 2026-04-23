@@ -90,21 +90,21 @@ class UserResponse(IDSchema, TimestampSchema):
 
         if not isinstance(data, dict):
             # It's an ORM object with a settings relationship
-            if hasattr(data, "settings") and data.settings:
-                settings = data.settings
-                data.ai_provider = settings.ai_provider
-                data.ai_model = settings.ai_model
-                data.preferred_language = settings.preferred_language
-                data.ats_threshold = settings.ats_threshold
-                data.recommendation_detail = settings.recommendation_detail
+            if hasattr(data, "preferences") and data.preferences:
+                preferences = data.preferences
+                data.ai_provider = preferences.ai_provider
+                data.ai_model = preferences.ai_model
+                data.preferred_language = preferences.preferred_language
+                data.ats_threshold = preferences.ats_threshold
+                data.recommendation_detail = preferences.recommendation_detail
             return data
 
-        # It's already a dict, copy settings fields if available
-        if "settings" in data and data["settings"]:
-            settings = data["settings"]
-            if isinstance(settings, dict):
-                data["ai_provider"] = settings.get("ai_provider")
-                data["ai_model"] = settings.get("ai_model")
+        # It's already a dict, copy preferences fields if available
+        if "preferences" in data and data["preferences"]:
+            preferences = data["preferences"]
+            if isinstance(preferences, dict):
+                data["ai_provider"] = preferences.get("ai_provider")
+                data["ai_model"] = preferences.get("ai_model")
                 data["preferred_language"] = settings.get("preferred_language")
                 data["ats_threshold"] = settings.get("ats_threshold")
                 data["recommendation_detail"] = settings.get("recommendation_detail")

@@ -58,8 +58,8 @@ class User(BaseModel):
     # Relationships
     # -------------------------------------------------------------------------
 
-    settings: Mapped["Settings"] = relationship(
-        "Settings", back_populates="user", cascade="all, delete-orphan"
+    preferences: Mapped["Preference"] = relationship(
+        "Preference", back_populates="user", cascade="all, delete-orphan"
     )
     cvs: Mapped[list["CV"]] = relationship(
         "CV", back_populates="user", cascade="all, delete-orphan"

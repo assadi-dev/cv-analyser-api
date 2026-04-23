@@ -7,13 +7,13 @@ from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import NotFoundError
 from app.models.user import User
-from app.models.settings import Settings
+from app.models.preference import Preference
 from app.repositories.base import BaseRepository
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-class SettingsRepository:
+class PreferenceRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
@@ -32,10 +32,20 @@ class SettingsRepository:
 
     async def create_settings(self,user_id: str) -> None:
         """
-        Initialize default settings for a user.
+        Initialize default preferences for a user.
         """
-        # TODO: implement the creation of the settings
-        pass
+        preference = Preference(
+            user_id=user_id,
+        
+     
+        )
+
+        print(preference.ats_threshold)
+
+    """     self.db.add(preference)
+        await self.db.commit()
+        await self.db.refresh(preference)
+        return preference """
 
     async def get_settings(self, user_id: str) -> dict:
         """

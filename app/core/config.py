@@ -102,7 +102,7 @@ class Settings(BaseSettings):
     @property
     def max_cv_size_bytes(self) -> int:
         """Maximum CV file size in bytes."""
-        return self.max_cv_size_mb * 1024 * 1024
+        return self.max_cv_size_mb * 1024 * 1024 * 3
 
     @property
     def is_production(self) -> bool:
@@ -123,3 +123,6 @@ class Settings(BaseSettings):
 
 # Singleton — import this everywhere
 settings = Settings()  # type: ignore[call-arg]
+
+
+
