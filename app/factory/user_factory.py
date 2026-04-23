@@ -17,3 +17,12 @@ class UserFactory:
             avatar_url=inputs.avatar_url,
             email_verified=inputs.email_verified
         )
+
+
+    @staticmethod
+    def update_request_to_model(user: User, inputs: dict) -> User:
+        """Updates an existing user model with input data."""
+        for key, value in inputs.items():
+            if hasattr(user, key):
+                setattr(user, key, value)
+        return user

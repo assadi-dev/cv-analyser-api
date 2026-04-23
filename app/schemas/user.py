@@ -19,6 +19,35 @@ class UserProfileUpdate(AppBaseModel):
     first_name: str | None = Field(default=None, max_length=100)
     last_name: str | None = Field(default=None, max_length=100)
     professional_title: str | None = Field(default=None, max_length=200)
+    avatar_url: str | None = Field(default=None)
+    email: str | None = Field(default=None)
+    auth_provider: str | None = Field(default=None)
+    email_verified: bool | None = Field(default=None)
+    is_active: bool | None = Field(default=None)
+
+
+
+class UserProfileUpdateResponse(AppBaseModel):
+    """Schema for updating user profile info."""
+
+    first_name: str | None = Field(default=None, max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
+    professional_title: str | None = Field(default=None, max_length=200)
+    full_name: str | None = Field(default=None, max_length=200)
+    avatar_url: str | None = Field(default=None)
+    email: str | None = Field(default=None)
+    auth_provider: str | None = Field(default=None)
+    email_verified: bool | None = Field(default=None)
+    is_active: bool | None = Field(default=None)
+    created_at: datetime | None = Field(default=None)
+    updated_at: datetime | None = Field(default=None)
+
+    @model_validator(mode="after")
+    @classmethod
+    def set_full_name(cls, data: Any) -> Any:
+        if data.first_name and data.last_name:
+            data.full_name = f"{data.first_name} {data.last_name}"
+        return data
 
 
 class UserPreferencesUpdate(AppBaseModel):
@@ -135,6 +164,7 @@ class UserResponse(IDSchema, TimestampSchema):
 
 
         return data
+
 
 
 

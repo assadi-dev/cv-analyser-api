@@ -17,12 +17,12 @@ class UserRepository(BaseRepository[User]):
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(User, db)
 
-    async def get_by_id_with_settings(self, user_id: uuid.UUID) -> User:
-        """Fetches a user by ID with settings eagerly loaded. Raises NotFoundError if not found."""
+    async def get_by_id_with_preferences(self, user_id: uuid.UUID) -> User:
+        """Fetches a user by ID with preferences eagerly loaded. Raises NotFoundError if not found."""
         result = await self.db.execute(
             select(User)
             .where(User.id == user_id)
-            .options(selectinload(User.settings))
+            .options(selectinload(User.preferences))
         )
         user = result.unique().scalar_one_or_none()
         if user is None:
@@ -79,7 +79,10 @@ class UserRepository(BaseRepository[User]):
 
     async def update_user(self, user: User) -> User:
         """Updates an existing user."""
-        return await self.update(user)
+        await self.update(user)
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
 
 
     async def delete_user(self, user: User) -> None:
