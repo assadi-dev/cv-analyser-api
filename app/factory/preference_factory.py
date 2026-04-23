@@ -12,7 +12,7 @@ class PreferenceFactory:
             user_id=user_id,
             ai_provider=PreferencesDefaultConfigs.ai_provider,
             ai_model=PreferencesDefaultConfigs.ai_model,
-            ollama_base_url=PreferencesDefaultConfigs.ollama_base_url,
+            ai_base_url=PreferencesDefaultConfigs.ai_base_url,
             preferred_language=PreferencesDefaultConfigs.preferred_language,
             ats_threshold=PreferencesDefaultConfigs.ats_threshold,
             recommendation_detail=PreferencesDefaultConfigs.recommendation_detail,

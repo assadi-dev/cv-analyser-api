@@ -103,7 +103,7 @@ class UserResponse(IDSchema, TimestampSchema):
     ai_provider: AIProvider
     ai_model: str
     ai_api_key_encrypted: str | None = None
-    ollama_base_url: str | None = None
+    ai_base_url: str | None = None
     preferred_language: Language
     ats_threshold: int
     recommendation_detail: RecommendationDetail
@@ -140,7 +140,7 @@ class UserResponse(IDSchema, TimestampSchema):
                     "ai_provider": preferences.ai_provider,
                     "ai_model": preferences.ai_model,
                     "ai_api_key_encrypted": preferences.ai_api_key_encrypted,
-                    "ollama_base_url": preferences.ollama_base_url,
+                    "ai_base_url": preferences.ai_base_url,
                     "preferred_language": preferences.preferred_language,
                     "ats_threshold": preferences.ats_threshold,
                     "recommendation_detail": preferences.recommendation_detail,
@@ -156,7 +156,7 @@ class UserResponse(IDSchema, TimestampSchema):
                 data["ai_provider"] = preferences.get("ai_provider")
                 data["ai_model"] = preferences.get("ai_model")
                 data["ai_api_key_encrypted"] = preferences.get("ai_api_key_encrypted")
-                data["ollama_base_url"] = preferences.get("ollama_base_url")
+                data["ai_base_url"] = preferences.get("ai_base_url")
                 data["preferred_language"] = preferences.get("preferred_language")
                 data["ats_threshold"] = preferences.get("ats_threshold")
                 data["recommendation_detail"] = preferences.get("recommendation_detail")
