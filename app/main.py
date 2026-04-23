@@ -88,9 +88,11 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.candidatures import router as candidatures_router
 from app.api.v1.cvs import router as cvs_router
 from app.api.v1.settings import router as settings_router
+from app.api.v1.account import router as account_router
 
 API_PREFIX = "/api/v1"
 
+app.include_router(account_router, prefix=API_PREFIX)
 app.include_router(auth_router, prefix=API_PREFIX)
 app.include_router(candidatures_router, prefix=API_PREFIX)
 app.include_router(cvs_router, prefix=API_PREFIX)

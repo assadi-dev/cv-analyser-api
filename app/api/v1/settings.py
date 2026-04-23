@@ -2,6 +2,7 @@
 Settings router — user profile, AI provider, and preferences.
 """
 
+from app.schemas.auth import RemoveUserRequest
 import uuid
 
 from fastapi import APIRouter, Depends
@@ -139,3 +140,5 @@ async def test_ai_provider(
     user = await repo.get_by_id_with_settings(uuid.UUID(user_id))
 
     return await ProviderService.test_provider(user)
+
+

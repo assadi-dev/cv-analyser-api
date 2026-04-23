@@ -40,6 +40,12 @@ class LoginResponse(AppBaseModel):
     expires_in_days: int = Field(description="Token validity in days")
 
 
+class RemoveUserRequest(AppBaseModel):
+    """Request body for removing a user."""
+
+    confirm: bool = Field(..., description="Confirmation")  
+
+
 class TokenExchangeRequest(AppBaseModel):
     """Request body for the token exchange endpoint."""
 

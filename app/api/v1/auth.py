@@ -5,6 +5,8 @@ This is the ONLY bridge between better-auth (Next.js) and FastAPI.
 After the exchange, FastAPI operates fully autonomously with its own JWT.
 """
 
+from app.core.dependencies import get_current_user_id
+from app.schemas.auth import RemoveUserRequest
 from app.schemas.auth import LoginRequest
 from app.services.auth_service import AuthService
 from fastapi.exceptions import HTTPException
@@ -62,7 +64,6 @@ async def login(
     )
 
 
-      
 
 
 @router.post(
