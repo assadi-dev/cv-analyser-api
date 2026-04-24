@@ -54,6 +54,7 @@ class UploadService:
             "name": file.filename,
             "extension": extension,
             "key": f"{id}{extension}",
+            
         }
 
     def generate_file_key(self, file: UploadFile) -> str:

@@ -2,6 +2,7 @@
 CVs router — upload and manage user resumes.
 """
 
+from app.services.cv_upload_services import CVUploadService
 import uuid
 from pathlib import Path
 
@@ -23,13 +24,7 @@ from app.schemas.cv import CVResponse, CVSetDefaultRequest
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/cvs", tags=["CVs"])
-
-ALLOWED_MIME_TYPES = {
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "text/plain",
-}
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
+cv_upload_service = CVUploadService()
 
 
 @router.get(
@@ -57,59 +52,10 @@ async def upload_cv(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    # Validate file extension
-    extension = Path(file.filename or "").suffix.lower()
-    if extension not in ALLOWED_EXTENSIONS:
-        raise UnsupportedFileTypeError(
-            detail=f"Unsupported file type '{extension}'. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
-        )
+  
+    result = await cv_upload_service.upload_cv(file, user_id)
 
-    # Read and validate file size
-    content = await file.read()
-    size_bytes = len(content)
-    if size_bytes > settings.max_cv_size_bytes:
-        print(settings.max_cv_size_mb)
-        raise FileTooLargeError(
-            detail=f"File size {size_bytes // 1024} KB exceeds maximum of {settings.max_cv_size_mb} MB"
-        )
-
-    # Save file to disk
-    upload_path = Path(settings.upload_dir) / user_id/settings.cv_dir
-    upload_path.mkdir(parents=True, exist_ok=True)
-
-    filename = file.filename
-    uuid_file = str(uuid.uuid4().hex)
-    key = f"{uuid_file}{extension}"
-    file_path = upload_path / key
-    file_path.write_bytes(content)
-
-    # Persist metadata
-    """     repo = CVRepository(db)
-    cv = await repo.create(
-        user_id=uuid.UUID(user_id),
-        name=file.filename or filename,
-        file_path=str(file_path),
-        file_size_kb=size_bytes // 1024,
-        mime_type=file.content_type or "application/octet-stream",
-        is_default=False,
-    )
- """
-    # Auto-set as default if it's the first CV
-    """     existing = await repo.list_for_user(uuid.UUID(user_id))
-    if len(existing) == 1:
-        await repo.set_default(uuid.UUID(user_id), cv.id)
-        cv.is_default = True
-
-    logger.info(
-        "CV uploaded",
-        extra={
-            "user_id": user_id,
-            "cv_id": str(cv.id),
-            "filename": file.filename,
-            "size_kb": cv.file_size_kb,
-        },
-    ) """
-    return {"message": "CV uploaded successfully", "key": key, "filename": filename, "extension": extension, "mime_type": file.content_type, "file_size_kb": size_bytes // 1024}
+    return {"message": "CV uploaded successfully", "key": result["key"]}
 
 
 @router.post(

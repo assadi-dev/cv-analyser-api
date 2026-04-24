@@ -86,3 +86,5 @@ class CVService:
         except Exception as exc:
             logger.error("DOCX parsing failed", exc_info=exc, extra={"path": str(path)})
             raise InternalError(detail=f"Failed to parse DOCX: {exc}") from exc
+
+
