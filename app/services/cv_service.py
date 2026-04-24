@@ -8,8 +8,6 @@ from app.schemas.cv import CVUpdateRequest
 from app.repositories.cv_repo import CVRepository
 from app.factory.cv_factory import CVFactory
 from app.schemas.cv_upload import CVUploadResult
-from pathlib import Path
-from app.core.exceptions import InternalError, UnsupportedFileTypeError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import get_logger
 from app.models.cv import CV
@@ -86,9 +84,8 @@ class CVService:
         """
         Remove all CVs for a user.
         """
-        cvs = await self.cv_repo.list_for_user(user_id)
-        for cv in cvs:
-            await self.cv_repo.delete_cv(cv.id)
+        await self.cv_upload_service.unlink_all_cv_files(user_id)
+        await self.cv_repo.remove_all_user_cvs(user_id)
         logger.info("All CVs deleted", extra={"user_id": user_id})
 
 

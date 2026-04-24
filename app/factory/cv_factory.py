@@ -57,4 +57,16 @@ class CVFactory:
         """Get the full path to a CV file."""
         full_path = Path(settings.upload_dir) / str(cv.user_id) / cv.key
         return str(full_path)
+
+
+    @staticmethod
+    def get_absolute_cv_user_folder(user_id: str) -> str:
+        """Get the full path to a CV user folder."""
+        full_path = Path(settings.upload_dir) / str(user_id) / settings.cv_dir
+        return str(full_path)
    
+    @staticmethod
+    def get_absolute_user_folder(user_id: str) -> str:
+        """Get the full path to a CV user folder."""
+        full_path = Path(settings.upload_dir) / str(user_id)
+        return str(full_path)

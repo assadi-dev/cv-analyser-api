@@ -36,3 +36,9 @@ class CVUploadService():
         full_path = CVFactory.get_absolute_cv_path(cv)
         await self.upload_service.remove_file(full_path)
         logger.info("CV file unlinked", extra={"cv_id": str(cv.id), "cv_path": full_path})
+
+    async def unlink_all_cv_files(self, user_id: str) -> None:
+        """Unlink all CV files for a user."""
+        cv_user_folder = CVFactory.get_absolute_cv_user_folder(user_id)
+        await self.upload_service.remove_folder_recursively(cv_user_folder)
+        logger.info("All CV files unlinked", extra={"user_id": user_id})

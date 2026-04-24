@@ -2,6 +2,8 @@
 
 
 
+from app.services.upload_servive import UploadService
+from app.factory.cv_factory import CVFactory
 from app.factory.user_factory import UserFactory
 from app.repositories.preference_repo import PreferenceRepository
 from app.models import Preference
@@ -26,6 +28,7 @@ class AuthService:
         self.db = db
         self.user_repo = UserRepository(db)
         self.preference_repo = PreferenceRepository(db)
+        self.upload_service = UploadService()
 
 
     async def register_user(self, inputs: RegisterRequest) -> User:
@@ -77,4 +80,6 @@ class AuthService:
 
         await self.user_repo.delete_user(user)
         await self.db.commit()
+        user_folder = CVFactory.get_absolute_user_folder(user_id)
+        await self.upload_service.remove_folder_recursively(user_folder)
         logger.info(f"User {user_id} removed successfully")

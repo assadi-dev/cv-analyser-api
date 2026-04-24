@@ -3,7 +3,7 @@
 from app.core.exceptions import NotFoundError
 import uuid
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select, update,delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cv import CV
@@ -102,9 +102,10 @@ class CVRepository(BaseRepository[CV]):
         """
         Remove all CVs for a user.
         """
-        cvs = await self.list_for_user(user_id)
-        for cv in cvs:
-            await self.delete(cv)
+        await self.db.execute(
+            delete(CV).where(CV.user_id == user_id)
+        )
         await self.db.flush()
         await self.db.commit()
+            
      
