@@ -42,6 +42,12 @@ class CV(BaseModel):
     file_size_kb: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
     )
+    extension: Mapped[str] = mapped_column(
+        String(10), nullable=False, default=".pdf"
+    )
+    key: Mapped[str] = mapped_column(
+        String(255), nullable=False, comment="Key to access the file"
+    )
     mime_type: Mapped[str] = mapped_column(
         String(100), nullable=False, default="application/pdf"
     )
