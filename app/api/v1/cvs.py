@@ -58,7 +58,7 @@ async def upload_cv(
     cv_service = CVService(db)  
     result = await cv_upload_service.upload_cv(file, user_id)
     cv = await cv_service.create_cv(user_id, result)
-
+    logger.info("CV created", extra={"user_id": user_id, "cv_id": str(cv.id)})
 
     return CVResponse.model_validate(cv)
 
@@ -77,6 +77,7 @@ async def update_cv(
 ) -> CVResponse:
     cv_service = CVService(db)
     cv = await cv_service.update_cv(cv_id, body)
+    logger.info("CV updated", extra={"user_id": user_id, "cv_id": str(cv_id)})
     return CVResponse.model_validate(cv)
 
 
@@ -105,16 +106,22 @@ async def delete_cv(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> DeleteResponse:
-    repo = CVRepository(db)
-    cv = await repo.get_by_user_and_id(uuid.UUID(user_id), cv_id)
-    if cv is None:
-        raise NotFoundError(resource="CV", resource_id=str(cv_id))
+    cv_service = CVService(db)
+    await cv_service.delete_cv(cv_id)
+    return DeleteResponse(message="CV deleted successfully", id=cv_id)
 
-    # Delete physical file
-    file_path = Path(cv.file_path)
-    if file_path.exists():
-        file_path.unlink()
 
-    await repo.delete(cv)
-    logger.info("CV deleted", extra={"user_id": user_id, "cv_id": str(cv_id)})
-    return DeleteResponse(id=cv_id)
+@router.delete(
+    "/remove/all",
+    response_model=MessageResponse,
+    summary="Delete all CVs",
+)
+async def remove_all_cvs(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    cv_service = CVService(db)
+    await cv_service.remove_all_user_cvs(uuid.UUID(user_id))
+  
+    return MessageResponse(message="All CVs deleted successfully")
+    

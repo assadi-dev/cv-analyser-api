@@ -52,11 +52,16 @@ class CVService:
         await self.cv_repo.update_cv(cv_id, inputs_dict)
         return existing_cv
 
-    async def delete_cv(self, cv: CV) -> CV:
+    async def delete_cv(self, cv_id: uuid.UUID) -> None:
         """
         Delete a CV for a user.
         """
-        pass
+        cv = await self.cv_repo.get_by_id(cv_id)
+        if cv is None:
+            raise NotFoundError(resource="CV", resource_id=str(cv_id))
+        await self.cv_repo.delete_cv(cv_id)
+        logger.info("CV deleted", extra={"cv_id": str(cv_id)})
+        
         
     async def get_user_default_cv(self, user_id: str) -> CV:
         """
@@ -78,4 +83,7 @@ class CVService:
         """
         Remove all CVs for a user.
         """
-        pass
+        cvs = await self.cv_repo.list_for_user(user_id)
+        for cv in cvs:
+            await self.cv_repo.delete_cv(cv.id)
+        logger.info("All CVs deleted", extra={"user_id": user_id})

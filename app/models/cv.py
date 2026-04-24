@@ -36,9 +36,7 @@ class CV(BaseModel):
     name: Mapped[str] = mapped_column(
         String(255), nullable=False, comment="Display name of the CV file"
     )
-    file_path: Mapped[str] = mapped_column(
-        Text, nullable=False, comment="Relative path to the stored file"
-    )
+
     file_size_kb: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
     )

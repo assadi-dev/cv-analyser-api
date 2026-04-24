@@ -43,6 +43,9 @@ class CVRepository(BaseRepository[CV]):
         )
         return list(result.scalars().all())
 
+    async def paginated_list_for_user(self, user_id: uuid.UUID, page: int, page_size: int,search:str = None) :
+        pass
+
     async def get_default_for_user(self, user_id: uuid.UUID) -> CV | None:
         """Returns the user's default CV, or None if none is marked as default."""
         result = await self.db.execute(
@@ -81,3 +84,27 @@ class CVRepository(BaseRepository[CV]):
             )
         )
         return result.scalar_one_or_none()
+
+
+    async def delete_cv(self, cv_id: uuid.UUID) -> None:
+        """
+        Delete CV for a user.
+        """
+        cv = await self.get_by_id(cv_id)
+        if cv is None:
+            raise NotFoundError(resource="CV", resource_id=str(cv_id))
+        await self.delete(cv)
+        await self.db.flush()
+        await self.db.commit()
+     
+
+    async def remove_all_user_cvs(self, user_id: uuid.UUID) -> None:
+        """
+        Remove all CVs for a user.
+        """
+        cvs = await self.list_for_user(user_id)
+        for cv in cvs:
+            await self.delete(cv)
+        await self.db.flush()
+        await self.db.commit()
+     
