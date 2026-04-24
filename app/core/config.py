@@ -91,6 +91,12 @@ class Settings(BaseSettings):
     cv_dir: str = Field(default="cv")
 
     # -------------------------------------------------------------------------
+    # Allowed CV extensions
+    # -------------------------------------------------------------------------
+    allowed_cv_extensions: list[str] = Field(default=[".pdf", ".docx", ".txt"])
+    allowed_cv_mime_types: list[str] = Field(default=["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain"])
+
+    # -------------------------------------------------------------------------
     # Computed properties
     # -------------------------------------------------------------------------
     @property
