@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -91,3 +91,14 @@ class CandidatureRepository(BaseRepository[Candidature]):
             .group_by(Candidature.status)
         )
         return {row[0]: row[1] for row in result.all()}
+
+
+    async def delete_all_user_candidature(self, user_id: uuid.UUID) -> None:
+        """Deletes all candidatures for a user."""
+        await self.db.execute(
+            delete(Candidature)
+            .where(Candidature.user_id == user_id)
+        )
+        await self.db.commit()
+
+    

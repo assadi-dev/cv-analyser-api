@@ -4,6 +4,9 @@ Analyse service — orchestrates the LangGraph pipeline with SSE streaming.
 Bridges the HTTP layer (FastAPI route) and the AI agent (LangGraph graph).
 """
 
+from app.core.config import settings
+from app.repositories.preference_repo import PreferenceRepository
+from app.models import Preference
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -80,12 +83,12 @@ class AnalyseService:
         # ---------------------------------------------------------------
         # Step 2 — Resolve AI provider config
         # ---------------------------------------------------------------
-        user_repo = UserRepository(self.db)
-        user = await user_repo.get_by_id_or_raise(user_id)
+        preference_repo = PreferenceRepository(self.db)
+        preference = await preference_repo.get_by_user_id(user_id)
 
         api_key = ""
-        if user.ai_api_key_encrypted:
-            api_key = ProviderService.decrypt_api_key(user.ai_api_key_encrypted)
+        if preference.ai_api_key_encrypted:
+            api_key = ProviderService.decrypt_api_key(preference.ai_api_key_encrypted)
 
         # ---------------------------------------------------------------
         # Step 3 — Build initial graph state
@@ -93,11 +96,11 @@ class AnalyseService:
         initial_state = {
             "cv_text": cv_text,
             "job_text": request.job_description,
-            "provider": user.ai_provider,
-            "model": user.ai_model,
+            "provider": preference.ai_provider,
+            "model": preference.ai_model,
             "api_key": api_key,
-            "language": user.preferred_language,
-            "recommendation_detail": user.recommendation_detail,
+            "language": preference.preferred_language,
+            "recommendation_detail": preference.recommendation_detail,
             "job_keywords": [],
             "cv_keywords": [],
             "score_ats": 0,
@@ -116,8 +119,8 @@ class AnalyseService:
             extra={
                 "user_id": str(user_id),
                 "candidature_id": str(candidature.id),
-                "provider": user.ai_provider,
-                "model": user.ai_model,
+                "provider": preference.ai_provider,
+                "model": preference.ai_model,
             },
         )
 
@@ -155,8 +158,8 @@ class AnalyseService:
             keywords_missing=final_state.get("keywords_missing", []),
             recommandations=final_state.get("recommandations", []),
             chat_history=[],
-            ai_provider=user.ai_provider,
-            ai_model=user.ai_model,
+            ai_provider=preference.ai_provider,
+            ai_model=preference.ai_model,
         )
 
         logger.info(
@@ -186,18 +189,18 @@ class AnalyseService:
         """
         from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-        user_repo = UserRepository(self.db)
+        preference_repo = PreferenceRepository(self.db)
         # We need the user — get it via candidature
         from app.repositories.candidature_repo import CandidatureRepository
         cand_repo = CandidatureRepository(self.db)
         candidature = await cand_repo.get_by_id_or_raise(analyse.candidature_id)
-        user = await user_repo.get_by_id_or_raise(candidature.user_id)
+        preference = await preference_repo.get_by_user_id(candidature.user_id)
 
         api_key = ""
-        if user.ai_api_key_encrypted:
-            api_key = ProviderService.decrypt_api_key(user.ai_api_key_encrypted)
+        if preference.ai_api_key_encrypted:
+            api_key = ProviderService.decrypt_api_key(preference.ai_api_key_encrypted)
 
-        llm = ProviderService.get_llm(user.ai_provider, user.ai_model, api_key)
+        llm = ProviderService.get_llm(preference.ai_provider, preference.ai_model, api_key, preference.ai_base_url,settings.llm_temperature)
 
         system = SystemMessage(
             content=(

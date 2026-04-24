@@ -56,7 +56,7 @@ async def list_candidatures(
 
 @router.post(
     "",
-    response_model=MessageResponse,
+    response_model=CandidatureResponse,
     status_code=201,
     summary="Create a new candidature",
 )
@@ -64,11 +64,11 @@ async def create_candidature(
     body: CandidatureCreate,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> MessageResponse:
+) -> CandidatureResponse:
     candidature_service = CandidatureService(db)
     candidature = await candidature_service.create_candidature(body, uuid.UUID(user_id))
 
-    return MessageResponse(message="Candidature created successfully")
+    return CandidatureResponse.model_validate(candidature)
 
 
 @router.get(
@@ -163,3 +163,17 @@ async def delete_candidature(
         extra={"user_id": user_id, "candidature_id": str(candidature_id)},
     )
     return DeleteResponse(id=candidature_id)
+
+
+@router.delete(
+    "/remove/all",
+    response_model=MessageResponse,
+    summary="Delete all user's candidatures",
+)
+async def delete_all_user_candidature(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    repo = CandidatureRepository(db)
+    await repo.delete_all_user_candidature(uuid.UUID(user_id))
+    return MessageResponse(message="All user's candidatures deleted")

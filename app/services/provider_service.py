@@ -51,7 +51,8 @@ class ProviderService:
         provider: str,
         model: str,
         api_key: str,
-        temperature: float = 0.1,
+        base_url: str = "",
+        temperature: float = settings.llm_temperature,
     ) -> BaseChatModel:
         """
         Instantiates a LangChain LLM for the given provider.
@@ -116,7 +117,7 @@ class ProviderService:
                     return ChatOllama(
                         model=model,
                         temperature=temperature,
-                        base_url=api_key or "http://localhost:11434",
+                        base_url=base_url or "http://localhost:11434",
                     )
 
                 case _:

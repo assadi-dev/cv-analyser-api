@@ -98,22 +98,28 @@ class CandidatureStatusUpdate(AppBaseModel):
     status: CandidatureStatus
 
 
+class CandidatureStatusResponse(AppBaseModel):
+    """Schema for updating only the status (Kanban drag & drop)."""
+    id: uuid.UUID
+    status: CandidatureStatus
+
 class CandidatureResponse(IDSchema, TimestampSchema):
     """Full candidature response with nested contacts."""
 
-    user_id: uuid.UUID
+    id: uuid.UUID
     cv_id: uuid.UUID | None
     company_name: str
     company_city: str | None
+    company_region: str | None
+    company_country: str | None
     job_title: str
     contract_type: str
     work_mode: str
     source_platform: str | None
-    source_name: str | None
     source_url: str | None
     status: str
     notes: str | None
-    contacts: list[ContactResponse] = Field(default_factory=list)
+    #contacts: list[ContactResponse] = Field(default_factory=list)
 
 
 class CandidatureSummary(IDSchema, TimestampSchema):
@@ -130,4 +136,4 @@ class CandidatureSummary(IDSchema, TimestampSchema):
     company_region: str | None
     company_country: str | None
     notes: str | None
-
+    #contacts: list[ContactResponse] = Field(default_factory=list)
