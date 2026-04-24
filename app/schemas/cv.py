@@ -14,9 +14,11 @@ class CVUpdateRequest(AppBaseModel):
 class CVResponse(IDSchema, TimestampSchema):
     """Full CV metadata response."""
     name: str
+    key: str
     file_size_kb: int
     mime_type: str
     is_default: bool
+
 
 
 class CVSetDefaultRequest(AppBaseModel):

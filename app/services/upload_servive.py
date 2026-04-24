@@ -36,15 +36,15 @@ class UploadService:
         upload_path.mkdir(parents=True, exist_ok=True)
         return upload_path
 
-    def remove_file(self, file_path: str) -> None:
-        file_path = Path(file_path)
-        if file_path.exists():
-            file_path.unlink()
+    async def remove_file(self, file_path: str) -> None:
+        file = Path(file_path)
+        if file.exists():
+            file.unlink()
     
-    def remove_folder_recursively(self, folder_path: str) -> None:
-        folder_path = Path(folder_path)
-        if folder_path.exists():
-            shutil.rmtree(folder_path)
+    async def remove_folder_recursively(self, folder_path: str) -> None:
+        folder = Path(folder_path)
+        if folder.exists():
+            shutil.rmtree(folder)
 
     def generate_file_name(self, file: UploadFile) -> dict[str, str]:
         extension = self.get_file_extension(file)

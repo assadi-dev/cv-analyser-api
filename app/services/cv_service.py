@@ -2,6 +2,7 @@
 CV parsing service — extracts plain text from PDF, DOCX, and TXT files.
 """
 
+from app.services.cv_upload_services import CVUploadService
 from app.core.exceptions import NotFoundError
 from app.schemas.cv import CVUpdateRequest
 from app.repositories.cv_repo import CVRepository
@@ -21,6 +22,7 @@ class CVService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.cv_repo = CVRepository(db)
+        self.cv_upload_service = CVUploadService()
 
     
     async def get_user_cvs(self, user_id: str) -> list[CV]:
@@ -60,6 +62,7 @@ class CVService:
         if cv is None:
             raise NotFoundError(resource="CV", resource_id=str(cv_id))
         await self.cv_repo.delete_cv(cv_id)
+        await self.cv_upload_service.unlink_cv_file(cv)
         logger.info("CV deleted", extra={"cv_id": str(cv_id)})
         
         
@@ -87,3 +90,7 @@ class CVService:
         for cv in cvs:
             await self.cv_repo.delete_cv(cv.id)
         logger.info("All CVs deleted", extra={"user_id": user_id})
+
+
+
+
