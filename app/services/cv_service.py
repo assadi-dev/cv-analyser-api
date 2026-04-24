@@ -2,89 +2,66 @@
 CV parsing service — extracts plain text from PDF, DOCX, and TXT files.
 """
 
+from app.repositories.cv_repo import CVRepository
+from app.factory.cv_factory import CVFactory
+from app.schemas.cv_upload import CVUploadResult
 from pathlib import Path
-
 from app.core.exceptions import InternalError, UnsupportedFileTypeError
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import get_logger
+from app.models.cv import CV
 
 logger = get_logger(__name__)
 
 
 class CVService:
-    """Parses CV files into plain text for AI analysis."""
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.cv_repo = CVRepository(db)
 
-    @staticmethod
-    def parse_file(file_path: str) -> str:
+    
+    async def get_user_cvs(self, user_id: str) -> list[CV]:
         """
-        Extracts plain text from a CV file.
-
-        Args:
-            file_path: Absolute or relative path to the CV file.
-
-        Returns:
-            Extracted plain text string.
-
-        Raises:
-            UnsupportedFileTypeError: File extension not supported.
-            InternalError:            Parsing failed unexpectedly.
+        Get all CVs for a user.
         """
-        path = Path(file_path)
-        suffix = path.suffix.lower()
+        pass
+    async def create_cv(self, user_id: str, input: CVUploadResult) -> CV:
+        """
+        Create a new CV for a user.
+        """
+       
+        cv = CVFactory.create_from_upload_result_to_model(user_id, input)
+        await self.cv_repo.create(cv)
+        print(cv.id)
 
-        match suffix:
-            case ".pdf":
-                return CVService._parse_pdf(path)
-            case ".docx":
-                return CVService._parse_docx(path)
-            case ".txt":
-                return path.read_text(encoding="utf-8")
-            case _:
-                raise UnsupportedFileTypeError(
-                    detail=f"Cannot parse file with extension '{suffix}'"
-                )
+        return cv
 
-    @staticmethod
-    def _parse_pdf(path: Path) -> str:
-        """Extracts text from a PDF file using PyPDF2."""
-        try:
-            import PyPDF2
+    async def update_cv(self, cv: CV) -> CV:
+        """
+        Update a CV for a user.
+        """
+        pass
 
-            text_parts: list[str] = []
-            with path.open("rb") as f:
-                reader = PyPDF2.PdfReader(f)
-                for page in reader.pages:
-                    page_text = page.extract_text() or ""
-                    text_parts.append(page_text)
+    async def delete_cv(self, cv: CV) -> CV:
+        """
+        Delete a CV for a user.
+        """
+        pass
+        
+    async def get_user_default_cv(self, user_id: str) -> CV:
+        """
+        Get the default CV for a user.
+        """
+        pass
 
-            full_text = "\n".join(text_parts).strip()
-            logger.info(
-                "PDF parsed",
-                extra={"path": str(path), "pages": len(text_parts), "chars": len(full_text)},
-            )
-            return full_text
+    async def set_default_cv(self, user_id: str, cv_id: str) -> CV:
+        """
+        Set a CV as the default for a user.
+        """
+        pass
 
-        except Exception as exc:
-            logger.error("PDF parsing failed", exc_info=exc, extra={"path": str(path)})
-            raise InternalError(detail=f"Failed to parse PDF: {exc}") from exc
-
-    @staticmethod
-    def _parse_docx(path: Path) -> str:
-        """Extracts text from a DOCX file using python-docx."""
-        try:
-            import docx
-
-            doc = docx.Document(str(path))
-            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-            full_text = "\n".join(paragraphs).strip()
-
-            logger.info(
-                "DOCX parsed",
-                extra={"path": str(path), "paragraphs": len(paragraphs), "chars": len(full_text)},
-            )
-            return full_text
-
-        except Exception as exc:
-            logger.error("DOCX parsing failed", exc_info=exc, extra={"path": str(path)})
-            raise InternalError(detail=f"Failed to parse DOCX: {exc}") from exc
-
-
+    async def remove_all_user_cvs(self, user_id: str) -> None:
+        """
+        Remove all CVs for a user.
+        """
+        pass

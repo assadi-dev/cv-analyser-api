@@ -19,7 +19,7 @@ from app.repositories.analyse_repo import AnalyseRepository
 from app.repositories.cv_repo import CVRepository
 from app.repositories.user_repo import UserRepository
 from app.schemas.analyse import AnalyseRequest
-from app.services.cv_service import CVService
+from app.services.cv_parser_services import CVParserService
 from app.services.provider_service import ProviderService
 
 logger = get_logger(__name__)
@@ -66,14 +66,14 @@ class AnalyseService:
             cv_repo = CVRepository(self.db)
             cv = await cv_repo.get_by_id(request.cv_id)
             if cv:
-                cv_text = CVService.parse_file(cv.file_path)
+                cv_text = CVParserService.parse_file(cv.file_path)
 
         if not cv_text:
             # Fall back to user's default CV
             cv_repo = CVRepository(self.db)
             default_cv = await cv_repo.get_default_for_user(user_id)
             if default_cv:
-                cv_text = CVService.parse_file(default_cv.file_path)
+                cv_text = CVParserService.parse_file(default_cv.file_path)
 
         cv_text = cv_text or ""
 

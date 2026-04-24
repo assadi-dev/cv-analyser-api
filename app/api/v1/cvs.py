@@ -2,7 +2,6 @@
 CVs router — upload and manage user resumes.
 """
 
-from app.services.cv_upload_services import CVUploadService
 import uuid
 from pathlib import Path
 
@@ -17,6 +16,8 @@ from app.core.exceptions import (
     NotFoundError,
     UnsupportedFileTypeError,
 )
+from app.services.cv_upload_services import CVUploadService
+from app.services.cv_service import CVService
 from app.core.logging import get_logger
 from app.repositories.cv_repo import CVRepository
 from app.schemas.common import DeleteResponse, MessageResponse
@@ -25,6 +26,7 @@ from app.schemas.cv import CVResponse, CVSetDefaultRequest
 logger = get_logger(__name__)
 router = APIRouter(prefix="/cvs", tags=["CVs"])
 cv_upload_service = CVUploadService()
+
 
 
 @router.get(
@@ -42,8 +44,7 @@ async def list_cvs(
 
 
 @router.post(
-    "",
-
+    "/upload",
     status_code=201,
     summary="Upload a new CV",
 )
@@ -52,10 +53,12 @@ async def upload_cv(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-  
+    cv_service = CVService(db)  
     result = await cv_upload_service.upload_cv(file, user_id)
+    cv = await cv_service.create_cv(user_id, result)
 
-    return {"message": "CV uploaded successfully", "key": result["key"]}
+
+    return {"message": "CV uploaded successfully", "key": result.key}
 
 
 @router.post(
