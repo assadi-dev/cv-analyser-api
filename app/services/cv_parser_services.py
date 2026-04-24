@@ -6,6 +6,8 @@ from pathlib import Path
 
 from app.core.exceptions import InternalError, UnsupportedFileTypeError
 from app.core.logging import get_logger
+import PyPDF2
+import docx
 
 logger = get_logger(__name__)
 
@@ -32,9 +34,9 @@ class CVParserService:
 
         match suffix:
             case ".pdf":
-                return CVService._parse_pdf(path)
+                return CVParserService._parse_pdf(path)
             case ".docx":
-                return CVService._parse_docx(path)
+                return CVParserService._parse_docx(path)
             case ".txt":
                 return path.read_text(encoding="utf-8")
             case _:
@@ -46,7 +48,7 @@ class CVParserService:
     def _parse_pdf(path: Path) -> str:
         """Extracts text from a PDF file using PyPDF2."""
         try:
-            import PyPDF2
+          
 
             text_parts: list[str] = []
             with path.open("rb") as f:
@@ -70,7 +72,6 @@ class CVParserService:
     def _parse_docx(path: Path) -> str:
         """Extracts text from a DOCX file using python-docx."""
         try:
-            import docx
 
             doc = docx.Document(str(path))
             paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
