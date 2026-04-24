@@ -16,13 +16,13 @@ class CandidatureService:
 
     async def create_candidature(self, inputs: CandidatureCreate, user_id: uuid.UUID) -> CandidatureResponse:
         candidature = CandidatureFactory.candidature_create_to_model(inputs, user_id)
-        print(candidature.contract_type)
+        print(candidature.id)
       
        
         # Create contacts via repository
-        """   if inputs.contacts:
-            await self.contact_repo.create_many(candidature.id, inputs.contacts) 
-        """
+        #if inputs.contacts:
+            #await self.contact_repo.create_many(candidature.id, inputs.contacts) 
+
 
        # await self.db.refresh(candidature)
 

@@ -13,6 +13,7 @@ class CandidatureFactory:
         Create a candidature model from a create request.
         """
         return Candidature(
+            id=uuid.uuid4(),
             user_id=user_id,
             company_name=inputs.company_name,
             company_city=inputs.company_city,
