@@ -44,6 +44,8 @@ class CandidatureCreate(AppBaseModel):
     # Company & position
     company_name: str = Field(..., min_length=1, max_length=255)
     company_city: str | None = Field(default=None, max_length=100)
+    company_region: str | None = Field(default=None, max_length=100)
+    company_country: str | None = Field(default=None, max_length=100)
     job_title: str = Field(..., min_length=1, max_length=255)
     contract_type: ContractType = Field(default="CDI")
     work_mode: WorkMode = Field(default="hybrid")

@@ -46,6 +46,8 @@ class Candidature(BaseModel):
     # -------------------------------------------------------------------------
     company_name: Mapped[str] = mapped_column(String(255), nullable=False)
     company_city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    company_region: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    company_country: Mapped[str | None] = mapped_column(String(100), nullable=True)
     job_title: Mapped[str] = mapped_column(String(255), nullable=False)
     contract_type: Mapped[str] = mapped_column(
         String(50), nullable=False, default="CDI",

@@ -2,6 +2,8 @@
 Candidatures router — full CRUD for job applications.
 """
 
+from app.schemas.common import MessageResponse
+from app.services.candidature_services import CandidatureService
 import uuid
 
 from fastapi import APIRouter, Depends, Query
@@ -39,7 +41,7 @@ async def list_candidatures(
 ) -> PaginatedResponse[CandidatureSummary]:
     repo = CandidatureRepository(db)
     items, total = await repo.list_for_user(
-        uuid.UUID(user_id),
+        uuid.UUID(user_id),  
         status=status,
         offset=pagination.offset,
         limit=pagination.limit,
@@ -54,7 +56,7 @@ async def list_candidatures(
 
 @router.post(
     "",
-    response_model=CandidatureResponse,
+    response_model=MessageResponse,
     status_code=201,
     summary="Create a new candidature",
 )
@@ -62,41 +64,11 @@ async def create_candidature(
     body: CandidatureCreate,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> CandidatureResponse:
-    repo = CandidatureRepository(db)
+) -> MessageResponse:
+    candidature_service = CandidatureService(db)
+    candidature = await candidature_service.create_candidature(body, uuid.UUID(user_id))
 
-    candidature = await repo.create(
-        user_id=uuid.UUID(user_id),
-        cv_id=body.cv_id,
-        company_name=body.company_name,
-        company_city=body.company_city,
-        job_title=body.job_title,
-        contract_type=body.contract_type,
-        work_mode=body.work_mode,
-        source_platform=body.source_platform,
-        source_name=body.source_name,
-        source_url=body.source_url,
-        status=body.status,
-        notes=body.notes,
-    )
-
-    # Create contacts via repository
-    if body.contacts:
-        contact_repo = ContactRepository(db)
-        await contact_repo.create_many(candidature.id, body.contacts)
-
-    await db.refresh(candidature)
-
-    logger.info(
-        "Candidature created",
-        extra={
-            "user_id": user_id,
-            "candidature_id": str(candidature.id),
-            "company": candidature.company_name,
-        },
-    )
-
-    return CandidatureResponse.model_validate(candidature)
+    return MessageResponse(message="Candidature created successfully")
 
 
 @router.get(

@@ -23,7 +23,7 @@ class PreferenceFactory:
         return PreferencesResponseByUser(
             ai_provider=preference.ai_provider,
             ai_model=preference.ai_model,
-            ollama_base_url=preference.ollama_base_url,
+            ai_base_url=preference.ai_base_url,
             preferred_language=preference.preferred_language,
             ats_threshold=preference.ats_threshold,
             recommendation_detail=preference.recommendation_detail,
