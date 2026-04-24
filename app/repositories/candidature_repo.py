@@ -16,6 +16,14 @@ class CandidatureRepository(BaseRepository[Candidature]):
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(Candidature, db)
 
+
+    async def create_candidature(self, candidature: Candidature) -> Candidature:
+        """Creates a candidature for a user."""
+        self.db.add(candidature)
+        await self.db.commit()
+        await self.db.refresh(candidature)
+        return candidature
+
     async def get_with_contacts(self, candidature_id: uuid.UUID) -> Candidature | None:
         """Fetches a candidature with its contacts eagerly loaded."""
         result = await self.db.execute(

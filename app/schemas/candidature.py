@@ -125,3 +125,9 @@ class CandidatureSummary(IDSchema, TimestampSchema):
     contract_type: str
     work_mode: str
     source_platform: str | None
+    source_url: str | None
+    company_city: str | None
+    company_region: str | None
+    company_country: str | None
+    notes: str | None
+

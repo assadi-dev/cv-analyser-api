@@ -16,6 +16,7 @@ class CandidatureService:
 
     async def create_candidature(self, inputs: CandidatureCreate, user_id: uuid.UUID) -> CandidatureResponse:
         candidature = CandidatureFactory.candidature_create_to_model(inputs, user_id)
+        candidature = await self.candidature_repo.create_candidature(candidature)
         print(candidature.id)
       
        
