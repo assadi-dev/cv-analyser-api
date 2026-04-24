@@ -15,6 +15,12 @@ class CVRepository(BaseRepository[CV]):
     def __init__(self, db: AsyncSession) -> None:
         super().__init__(CV, db)
 
+    async def create_cv(self, model: CV) -> CV:
+        self.db.add(model)
+        await self.db.commit()
+        await self.db.refresh(model)
+        return model
+
     async def list_for_user(self, user_id: uuid.UUID) -> list[CV]:
         """Returns all CVs for a user, ordered by default first, then by date."""
         result = await self.db.execute(

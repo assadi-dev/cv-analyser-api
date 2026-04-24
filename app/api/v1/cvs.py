@@ -46,19 +46,20 @@ async def list_cvs(
 @router.post(
     "/upload",
     status_code=201,
+    response_model=CVResponse,
     summary="Upload a new CV",
 )
 async def upload_cv(
     file: UploadFile = File(..., description="PDF, DOCX, or TXT resume file"),
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-):
+)->CVResponse:
     cv_service = CVService(db)  
     result = await cv_upload_service.upload_cv(file, user_id)
     cv = await cv_service.create_cv(user_id, result)
 
 
-    return {"message": "CV uploaded successfully", "key": result.key}
+    return CVResponse.model_validate(cv)
 
 
 @router.post(

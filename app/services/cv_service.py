@@ -31,7 +31,7 @@ class CVService:
         """
        
         cv = CVFactory.create_from_upload_result_to_model(user_id, input)
-        await self.cv_repo.create(cv)
+        await self.cv_repo.create_cv(cv)
         print(cv.id)
 
         return cv
