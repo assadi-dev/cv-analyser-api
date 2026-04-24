@@ -80,22 +80,18 @@ async def update_cv(
     return CVResponse.model_validate(cv)
 
 
-@router.post(
-    "/default",
+@router.put(
+    "/set-default/{cv_id}",
     response_model=MessageResponse,
     summary="Set a CV as the user's default",
 )
 async def set_default_cv(
-    body: CVSetDefaultRequest,
+    cv_id: str,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
-    repo = CVRepository(db)
-    cv = await repo.get_by_user_and_id(uuid.UUID(user_id), body.cv_id)
-    if cv is None:
-        raise NotFoundError(resource="CV", resource_id=str(body.cv_id))
-
-    await repo.set_default(uuid.UUID(user_id), body.cv_id)
+    cv_service = CVService(db)
+    await cv_service.set_default_cv(uuid.UUID(user_id), uuid.UUID(cv_id))
     return MessageResponse(message="Default CV updated successfully")
 
 

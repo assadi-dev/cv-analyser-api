@@ -64,13 +64,17 @@ class CVService:
         """
         pass
 
-    async def set_default_cv(self, user_id: str, cv_id: str) -> CV:
+    async def set_default_cv(self, user_id: uuid.UUID, cv_id: uuid.UUID) -> CV:
         """
         Set a CV as the default for a user.
         """
-        pass
+        cv = await self.cv_repo.get_by_user_and_id(user_id, cv_id)
+        if cv is None:
+            raise NotFoundError(resource="CV", resource_id=str(cv_id))
 
-    async def remove_all_user_cvs(self, user_id: str) -> None:
+        await self.cv_repo.set_default(user_id, cv_id)
+
+    async def remove_all_user_cvs(self, user_id: uuid.UUID) -> None:
         """
         Remove all CVs for a user.
         """
