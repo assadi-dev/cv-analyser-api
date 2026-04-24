@@ -1,5 +1,6 @@
 """CV repository."""
 
+from app.core.exceptions import NotFoundError
 import uuid
 
 from sqlalchemy import and_, select, update
@@ -20,6 +21,18 @@ class CVRepository(BaseRepository[CV]):
         await self.db.commit()
         await self.db.refresh(model)
         return model
+        
+
+    async def update_cv(self,id:uuid.UUID, inputs: dict) -> CV:
+
+        cv = await self.get_by_id(id)
+        if not cv:
+            raise NotFoundError(resource="CV", resource_id=id)
+
+        updated = await self.update(cv, **inputs)
+        await self.db.commit()
+        await self.db.refresh(updated)
+        return updated
 
     async def list_for_user(self, user_id: uuid.UUID) -> list[CV]:
         """Returns all CVs for a user, ordered by default first, then by date."""

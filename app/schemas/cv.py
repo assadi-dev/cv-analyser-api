@@ -6,6 +6,10 @@ from pydantic import Field
 
 from app.schemas.common import AppBaseModel, IDSchema, TimestampSchema
 
+class CVUpdateRequest(AppBaseModel):
+    """Request to update a CV."""
+    name: str | None = None
+    is_default: bool | None = None
 
 class CVResponse(IDSchema, TimestampSchema):
     """Full CV metadata response."""

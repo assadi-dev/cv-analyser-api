@@ -40,3 +40,12 @@ class CVFactory:
             is_default=data["is_default"],
 
         )
+
+
+    @staticmethod
+    def update_request_to_model(cv: CV, inputs: dict) -> CV:
+        """Updates an existing CV model with input data."""
+        for key, value in inputs.items():
+            if hasattr(cv, key):
+                setattr(cv, key, value)
+        return cv

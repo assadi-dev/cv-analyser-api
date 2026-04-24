@@ -2,6 +2,8 @@
 CV parsing service — extracts plain text from PDF, DOCX, and TXT files.
 """
 
+from app.core.exceptions import NotFoundError
+from app.schemas.cv import CVUpdateRequest
 from app.repositories.cv_repo import CVRepository
 from app.factory.cv_factory import CVFactory
 from app.schemas.cv_upload import CVUploadResult
@@ -10,6 +12,7 @@ from app.core.exceptions import InternalError, UnsupportedFileTypeError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import get_logger
 from app.models.cv import CV
+import uuid
 
 logger = get_logger(__name__)
 
@@ -32,15 +35,22 @@ class CVService:
        
         cv = CVFactory.create_from_upload_result_to_model(user_id, input)
         await self.cv_repo.create_cv(cv)
-        print(cv.id)
-
         return cv
 
-    async def update_cv(self, cv: CV) -> CV:
+    async def update_cv(self, cv_id: uuid.UUID, inputs: CVUpdateRequest) -> CV:
         """
         Update a CV for a user.
         """
-        pass
+        existing_cv = await self.cv_repo.get_by_id(cv_id)
+        inputs_dict = inputs.model_dump(exclude_none=True) if hasattr(inputs, "model_dump") else inputs
+
+        if not existing_cv:
+            raise NotFoundError(resource="CV", resource_id=cv_id)
+        
+        CVFactory.update_request_to_model(existing_cv, inputs_dict)
+
+        await self.cv_repo.update_cv(cv_id, inputs_dict)
+        return existing_cv
 
     async def delete_cv(self, cv: CV) -> CV:
         """

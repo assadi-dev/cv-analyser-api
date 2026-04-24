@@ -2,6 +2,7 @@
 CVs router — upload and manage user resumes.
 """
 
+from app.schemas.cv import CVUpdateRequest
 import uuid
 from pathlib import Path
 
@@ -59,6 +60,23 @@ async def upload_cv(
     cv = await cv_service.create_cv(user_id, result)
 
 
+    return CVResponse.model_validate(cv)
+
+
+@router.put(
+    "/{cv_id}",
+    response_model=CVResponse,
+    summary="Update a CV",
+)
+async def update_cv(
+    cv_id: uuid.UUID,
+    body: CVUpdateRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+
+) -> CVResponse:
+    cv_service = CVService(db)
+    cv = await cv_service.update_cv(cv_id, body)
     return CVResponse.model_validate(cv)
 
 
