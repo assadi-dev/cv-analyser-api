@@ -57,15 +57,7 @@ class Settings(BaseSettings):
     algorithm: str = Field(default="HS256")
     api_token_expire_days: int = Field(default=30, ge=1, le=365)
 
-    # -------------------------------------------------------------------------
-    # Better Auth (token exchange bridge)
-    # -------------------------------------------------------------------------
-    better_auth_secret: str = Field(
-        ...,
-        min_length=32,
-        description="Shared secret with Next.js better-auth — used for token exchange only",
-    )
-    better_auth_url: str = Field(default="http://localhost:3000")
+
 
     # -------------------------------------------------------------------------
     # CORS
@@ -86,15 +78,17 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     # AI Provider defaults (fallback)
     # -------------------------------------------------------------------------
-    default_ai_provider: str = Field(default="openai")
-    default_ai_model: str = Field(default="gpt-4o")
+    default_ai_provider: str = Field(default="ollama")
+    default_ai_model: str = Field(default="llama3.2")
     openai_api_key: str = Field(default="")
+    default_ai_base_url: str = Field(default="http://localhost:11434")
 
     # -------------------------------------------------------------------------
     # File storage
     # -------------------------------------------------------------------------
     upload_dir: str = Field(default="uploads")
     max_cv_size_mb: int = Field(default=10, ge=1, le=50)
+    cv_dir: str = Field(default="cv")
 
     # -------------------------------------------------------------------------
     # Computed properties
@@ -102,7 +96,7 @@ class Settings(BaseSettings):
     @property
     def max_cv_size_bytes(self) -> int:
         """Maximum CV file size in bytes."""
-        return self.max_cv_size_mb * 1024 * 1024 * 3
+        return self.max_cv_size_mb * 1024 * 1024
 
     @property
     def is_production(self) -> bool:
