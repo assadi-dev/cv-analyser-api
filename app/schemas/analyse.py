@@ -74,6 +74,18 @@ class AnalyseRequest(AppBaseModel):
         description="Pre-extracted CV text — if None, the stored CV file is parsed",
     )
 
+class AnalyseRequestTemporary(AppBaseModel):
+    """Request body to start an AI analysis."""
+    job_description: str = Field(
+        ...,
+        min_length=50,
+        description="Raw job offer text",
+    )
+    cv_text: str | None = Field(
+        default=None,
+        description="Pre-extracted CV text — if None, the stored CV file is parsed",
+    )
+
 
 class ChatMessageRequest(AppBaseModel):
     """Request to continue the chat conversation on an existing analysis."""

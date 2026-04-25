@@ -2,6 +2,7 @@
 Analyses router — AI analysis with SSE streaming.
 """
 
+import asyncio
 import json
 import uuid
 
@@ -15,7 +16,7 @@ from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
 from app.repositories.analyse_repo import AnalyseRepository
 from app.repositories.candidature_repo import CandidatureRepository
-from app.schemas.analyse import AnalyseRequest, AnalyseResponse, ChatMessageRequest, ChatResponse
+from app.schemas.analyse import AnalyseRequest, AnalyseResponse, ChatMessageRequest, ChatResponse,AnalyseRequestTemporary
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/analyses", tags=["Analyses"])
@@ -123,3 +124,72 @@ async def chat(
     reply = await service.chat(analyse=analyse, message=body.message)
 
     return ChatResponse(analyse_id=body.analyse_id, message=reply)
+
+
+async def analyse_temporary_task(queue: asyncio.Queue):
+   for i in range(10):
+       await asyncio.sleep(1)
+       event = {
+           "type": "progress",
+           "progress": (i+1) * 10,
+           "data": {
+               "message": f"Step {i+1}/10"
+           }
+       }
+       await queue.put(f"data: {json.dumps(event)}\n\n")
+   await queue.put("data: done\n\n")
+       
+
+
+@router.post(
+    "/temporary/stream",
+    response_class=StreamingResponse,
+    summary="Start a temporary AI analysis with SSE real-time streaming",
+)
+async def stream_analyse_temporary(
+    body: AnalyseRequestTemporary,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    """
+    SSE streaming endpoint for temporary users.
+    """
+
+    async def event_generator():
+        queue = asyncio.Queue()
+        analyse_task = None
+        try:
+            analyse_task = asyncio.create_task(analyse_temporary_task(queue))
+            while not analyse_task.done():
+                yield await queue.get()
+        except asyncio.CancelledError:
+            logger.info("Client déconnecté")
+        except Exception as exc:
+            logger.error(
+                "SSE stream error",
+                exc_info=exc,
+                extra={"user_id": user_id},
+            )
+            error_event = {
+                "type": "error",
+                "message": "Analysis failed. Please try again.",
+                "error_code": "ANALYSIS_FAILED",
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
+        finally:
+           if analyse_task:
+                analyse_task.cancel()
+                try:
+                    await analyse_task
+                except asyncio.CancelledError:
+                    pass
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable Nginx buffering
+        },
+    )
