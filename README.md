@@ -9,6 +9,31 @@ AI-powered personal job application tracker — FastAPI backend.
 - **SSE** for real-time streaming
 - **better-auth** token exchange bridge
 
+## Prerequisites
+
+This project requires **Tesseract OCR** for text extraction from images/PDFs. Follow the instructions for your OS:
+
+### Windows
+1. Download the installer from [UB Mannheim](https://github.com/UB-Mannheim/tesseract/wiki).
+2. Install it (default path is usually `C:\Program Files\Tesseract-OCR`).
+3. Add the installation folder to your system **PATH** environment variable.
+
+### Linux
+- **Ubuntu/Debian**:
+  ```bash
+  sudo apt update
+  sudo apt install tesseract-ocr libtesseract-dev
+  ```
+- **Arch Linux**:
+  ```bash
+  sudo pacman -S tesseract
+  ```
+
+### macOS
+```bash
+brew install tesseract
+```
+
 ## Setup
 
 ```bash
@@ -40,15 +65,26 @@ alembic upgrade head
 ## API Docs
 Available at `http://localhost:8000/docs` (development only)
 
-## Architecture
+## Project Structure
 
 ```
-app/
-├── core/          # Config, DB, security, logging, exceptions, handlers
-├── models/        # SQLAlchemy ORM models
-├── schemas/       # Pydantic request/response schemas
-├── repositories/  # Data access layer (base + domain repos)
-├── api/v1/        # FastAPI routers (auth, candidatures, CVs, analyses, settings)
-├── agents/        # LangGraph pipeline (state, nodes, graph)
-└── services/      # Business logic (analyse, CV parser, provider)
+job-optimizer-api/
+├── app/
+│   ├── agents/        # LangGraph pipeline (state, nodes, graph)
+│   ├── api/           # FastAPI routers
+│   │   └── v1/        # API Version 1 endpoints (auth, candidate, etc.)
+│   ├── core/          # Config, DB, security, logging, exceptions
+│   ├── factory/       # Service & Agent factories
+│   ├── middleware/    # Custom FastAPI middlewares
+│   ├── models/        # SQLAlchemy ORM models
+│   ├── repositories/  # Data access layer (async repositories)
+│   ├── schemas/       # Pydantic request/response schemas
+│   ├── services/      # Business logic (analysis, parsing, etc.)
+│   └── main.py        # Application entry point
+├── migrations/        # Alembic database migrations
+├── tests/             # Pytest suite (unit & integration)
+├── logs/              # Application log files
+├── uploads/           # Temporary folder for uploaded files
+├── pyproject.toml     # Project dependencies & configuration
+└── alembic.ini       # Alembic configuration
 ```
