@@ -5,10 +5,7 @@ Uses the LLM to produce actionable, prioritized recommendations
 based on the analysis results.
 """
 
-import json
-import re
 from typing import Literal
-
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import JsonOutputParser
@@ -16,7 +13,6 @@ from app.agents.state import AnalyseState
 from app.core.logging import get_logger
 from app.services.provider_service import ProviderService
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnableLambda
 
 logger = get_logger(__name__)
 
@@ -33,12 +29,12 @@ Based on the CV-job match analysis, generate clear, actionable recommendations.
 
 Respond ONLY with a valid JSON array of recommendation objects:
 [
-    {
+   {{
         "type": "warning|success|info",
         "title": "<short title (max 60 chars)>",
         "description": "<actionable explanation (max 200 chars)>",
         "impact": "high|medium|low"
-    }
+    }}
 ]
 
 Rules:
@@ -104,15 +100,15 @@ async def generate_recommendations_node(state: AnalyseState) -> dict:
             api_key=state["api_key"],
         )
 
-        messages = [
+        prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content=RECOMMENDER_SYSTEM_PROMPT),
-            HumanMessage(content=_build_recommender_prompt(state, language)),
-        ]
+            HumanMessage(content="{input}"),
+        ])
 
-        chain = RunnableLambda(lambda _: messages) | llm | parser
+        chain = prompt | llm | parser
 
-        response = await chain.ainvoke({})
-        print("json_content", response)
+        response = await chain.ainvoke({"input": _build_recommender_prompt(state, language)})
+
         recommandations: list[dict] = response
 
     except Exception as exc:

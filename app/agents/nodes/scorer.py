@@ -7,28 +7,37 @@ Uses the configured AI provider to semantically evaluate:
 - Computes a weighted global score
 """
 
-import json
-import re
-
 from langchain_core.messages import HumanMessage, SystemMessage
-
+from pydantic import BaseModel, Field
 from app.agents.state import AnalyseState
 from app.core.logging import get_logger
 from app.services.provider_service import ProviderService
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
 
 logger = get_logger(__name__)
+
+class ScoreReasoning(BaseModel):
+    competences: str = Field(..., description="Brief explanation of the competence score")
+    experience: str = Field(..., description="Brief explanation of the experience score")
+
+class ScoreResult(BaseModel):
+    score_competences: int = Field(default=70, ge=0, le=100, description="Technical skills score (0-100)" )
+    score_experience: int = Field(default=70, ge=0, le=100, description="Experience relevance score (0-100)")
+    reasoning: ScoreReasoning = Field(..., description="Reasoning behind the scores")
 
 SCORER_SYSTEM_PROMPT = """You are an expert HR analyst and ATS specialist.
 Your task is to analyze the match between a CV and a job offer.
 
 Respond ONLY with a valid JSON object in this exact format:
-{
+{{
     "score_competences": <integer 0-100>,
     "score_experience": <integer 0-100>,
-    "reasoning": {
+    "reasoning": {{
         "competences": "<brief explanation>",
         "experience": "<brief explanation>"
-    }
+        }}
+    }}
 }
 
 Scoring guidelines:
@@ -96,23 +105,25 @@ async def compute_score_node(state: AnalyseState) -> dict:
             api_key=state["api_key"],
         )
 
-        messages = [
+        parser = JsonOutputParser(pydantic_object=ScoreResult)
+
+        prompt = ChatPromptTemplate.from_messages([
             SystemMessage(content=SCORER_SYSTEM_PROMPT),
-            HumanMessage(
-                content=_build_scorer_prompt(
+            HumanMessage(content="{input}"),
+        ])
+
+        chain = prompt | llm | parser
+
+        response = await chain.ainvoke({
+            "input": _build_scorer_prompt(
                     state["cv_text"],
                     state["job_text"],
                     state.get("language", "fr"),
                 )
-            ),
-        ]
-        response = await llm.ainvoke(messages)
-        json_content = re.sub(r"```(?:json)?\s*", "", str(response.content).strip()).strip()
+            })
 
-        # Parse JSON from LLM response
-        parsed = json.loads(json_content)
-        score_competences = int(parsed.get("score_competences", 70))
-        score_experience = int(parsed.get("score_experience", 70))
+        score_competences = int(response.get("score_competences", 70))
+        score_experience = int(response.get("score_experience", 70))
 
     except Exception as exc:
         logger.warning(
