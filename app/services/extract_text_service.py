@@ -51,7 +51,7 @@ class ExtractTextService:
             return full_text
 
         except Exception as exc:
-            logger.error("PDF parsing failed", exc_info=exc, extra={"path": str(path)})
+            logger.error("PDF parsing failed", exc_info=exc)
             return full_text
 
 
