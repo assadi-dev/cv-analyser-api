@@ -113,7 +113,6 @@ async def compute_score_node(state: AnalyseState) -> dict:
 
         # Parse JSON from LLM response
         parsed = json.loads(json_content)
-        print("json parsed", parsed)
         score_competences = int(parsed.get("score_competences", 70))
         score_experience = int(parsed.get("score_experience", 70))
 
