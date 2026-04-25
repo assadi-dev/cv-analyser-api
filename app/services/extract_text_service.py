@@ -92,13 +92,52 @@ class ExtractTextService:
             if not extension == ".docx":
                 raise UnsupportedFileTypeError(detail="File is not a DOCX")
             
+            full_text=""
             doc = docx.Document(str(path))
-            paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-            full_text = "\n".join(paragraphs).strip()
+            parts = []
+
+            # 1. Paragraphs
+            for para in doc.paragraphs:
+                if para.text.strip():
+                    parts.append(para.text)
+            
+            # 2. Tables
+            for table in doc.tables:
+                for row in table.rows:
+                    row_text = []
+                    for cell in row.cells:
+                        # get the text of each cell
+                        cell_text = " | ".join(p.text for p in cell.paragraphs if p.text.strip())
+                        if cell_text:
+                            row_text.append(cell_text)
+                    
+                    if row_text:
+                        parts.append(" | ".join(row_text))
+
+            # 3. Headers & Footers
+            for section in doc.sections:
+                # Header
+                for para in section.header.paragraphs:
+                    if para.text.strip():
+                        parts.append(f"[HEADER] {para.text}")
+                
+                # Footer
+                for para in section.footer.paragraphs:
+                    if para.text.strip():
+                        parts.append(f"[FOOTER] {para.text}")
+
+            # 4. Text in Shapes (text boxes, etc.)
+            ns = "http://schemas.openxmlformats.org/drawingml/2006/main"
+            for t in doc.element.body.iter(f"{{{ns}}}t"):
+                if t.text and t.text.strip():
+                    parts.append(t.text)
+
+                    
+            full_text = "\n".join(parts).strip()
 
             logger.info(
                 "DOCX text extracted",
-                extra={"path": str(path), "paragraphs": len(paragraphs), "chars": len(full_text)},
+                extra={"path": str(path), "paragraphs": len(parts), "chars": len(full_text)},
             )
             return full_text
 

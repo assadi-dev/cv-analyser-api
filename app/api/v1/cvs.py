@@ -74,7 +74,6 @@ async def extract_cv(
     file: UploadFile = File(..., description="PDF, DOCX, or TXT resume file"),
     user_id: str = Depends(get_current_user_id),
 )->CVExtractResponse:
-
     upload_result = await cv_upload_service.upload_cv(file, user_id)
     text = CVParserService.parse_file(upload_result.file_path)
     if Path(upload_result.file_path).exists():
