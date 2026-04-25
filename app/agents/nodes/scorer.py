@@ -105,12 +105,15 @@ async def compute_score_node(state: AnalyseState) -> dict:
                 )
             ),
         ]
+        raw_content = None
+        for chunk in llm.stream(messages):
+            raw_content = chunk if raw_content is None else raw_content + chunk
 
-        response = await llm.ainvoke(messages)
-        raw_content = str(response.content)
+        json_content = raw_content.text.replace("```json", "").replace("```", "")
 
         # Parse JSON from LLM response
-        parsed = json.loads(raw_content.strip())
+        parsed = json.loads(json_content)
+        print("json parsed", parsed)
         score_competences = int(parsed.get("score_competences", 70))
         score_experience = int(parsed.get("score_experience", 70))
 
