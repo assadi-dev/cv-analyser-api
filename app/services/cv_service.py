@@ -87,7 +87,3 @@ class CVService:
         await self.cv_upload_service.unlink_all_cv_files(user_id)
         await self.cv_repo.remove_all_user_cvs(user_id)
         logger.info("All CVs deleted", extra={"user_id": user_id})
-
-
-
-
