@@ -45,6 +45,9 @@ dependencies = [
     "python-slugify>=8.0.0",
     "cryptography>=42.0.0",
     "bcrypt>=5.0.0",
+    "pymupdf>=1.27.2.3",
+    "pytesseract>=0.3.13",
+    "pillow>=12.2.0",
 ]
 
 [project.optional-dependencies]

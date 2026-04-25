@@ -98,6 +98,13 @@ class Settings(BaseSettings):
     allowed_cv_mime_types: list[str] = Field(default=["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain"])
 
     # -------------------------------------------------------------------------
+    # OCR
+    # -------------------------------------------------------------------------
+    ocr_dpi: int = Field(default=300)
+    ocr_languages: str = Field(default="eng")
+    ocr_image_bytes_format: str = Field(default="png")
+
+    # -------------------------------------------------------------------------
     # Computed properties
     # -------------------------------------------------------------------------
     @property

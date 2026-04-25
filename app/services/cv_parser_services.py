@@ -4,7 +4,7 @@ CV parsing service — extracts plain text from PDF, DOCX, and TXT files.
 
 from pathlib import Path
 
-from app.core.exceptions import  UnsupportedFileTypeError
+from app.core.exceptions import UnsupportedFileTypeError
 from app.core.logging import get_logger
 from app.services.extract_text_service import ExtractTextService
 logger = get_logger(__name__)

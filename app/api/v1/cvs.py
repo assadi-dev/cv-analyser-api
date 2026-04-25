@@ -2,6 +2,8 @@
 CVs router — upload and manage user resumes.
 """
 
+from app.services.cv_parser_services import CVParserService
+from app.schemas.cv import CVExtractResponse
 from app.schemas.cv import CVUpdateRequest
 import uuid
 from pathlib import Path
@@ -62,6 +64,22 @@ async def upload_cv(
 
     return CVResponse.model_validate(cv)
 
+
+@router.post(
+    "/extract",
+    response_model=CVExtractResponse,
+    summary="Extract text from a CV",
+)
+async def extract_cv(
+    file: UploadFile = File(..., description="PDF, DOCX, or TXT resume file"),
+    user_id: str = Depends(get_current_user_id),
+)->CVExtractResponse:
+
+    upload_result = await cv_upload_service.upload_cv(file, user_id)
+    text = CVParserService.parse_file(upload_result.file_path)
+    if Path(upload_result.file_path).exists():
+        Path(upload_result.file_path).unlink()
+    return CVExtractResponse(text=text)
 
 @router.put(
     "/{cv_id}",
