@@ -6,14 +6,27 @@ based on the analysis results.
 """
 
 import json
+import re
+from typing import Literal
 
 from langchain_core.messages import HumanMessage, SystemMessage
-
+from pydantic import BaseModel, Field
+from langchain_core.output_parsers import JsonOutputParser
 from app.agents.state import AnalyseState
 from app.core.logging import get_logger
 from app.services.provider_service import ProviderService
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableLambda
 
 logger = get_logger(__name__)
+
+
+class Recommendation(BaseModel):
+    type: Literal["warning", "success", "info"] = Field(..., description="Type of recommendation")
+    title: str = Field(..., description="Title of recommendation")
+    description: str = Field(..., description="Description of recommendation")
+    impact: Literal["high", "medium", "low"] = Field(..., description="Impact of recommendation")
+
 
 RECOMMENDER_SYSTEM_PROMPT = """You are an expert career coach and CV optimization specialist.
 Based on the CV-job match analysis, generate clear, actionable recommendations.
@@ -83,6 +96,8 @@ async def generate_recommendations_node(state: AnalyseState) -> dict:
     language = state.get("language", "fr")
 
     try:
+        parser = JsonOutputParser(pydantic_object=Recommendation)
+
         llm = ProviderService.get_llm(
             provider=state["provider"],
             model=state["model"],
@@ -94,9 +109,11 @@ async def generate_recommendations_node(state: AnalyseState) -> dict:
             HumanMessage(content=_build_recommender_prompt(state, language)),
         ]
 
-        response = await llm.ainvoke(messages)
-        raw_content = str(response.content).strip()
-        recommandations: list[dict] = json.loads(raw_content)
+        chain = RunnableLambda(lambda _: messages) | llm | parser
+
+        response = await chain.ainvoke({})
+        print("json_content", response)
+        recommandations: list[dict] = response
 
     except Exception as exc:
         logger.warning(

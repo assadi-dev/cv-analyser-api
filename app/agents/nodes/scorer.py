@@ -8,6 +8,7 @@ Uses the configured AI provider to semantically evaluate:
 """
 
 import json
+import re
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -105,11 +106,8 @@ async def compute_score_node(state: AnalyseState) -> dict:
                 )
             ),
         ]
-        raw_content = None
-        for chunk in llm.stream(messages):
-            raw_content = chunk if raw_content is None else raw_content + chunk
-
-        json_content = raw_content.text.replace("```json", "").replace("```", "")
+        response = await llm.ainvoke(messages)
+        json_content = re.sub(r"```(?:json)?\s*", "", str(response.content).strip()).strip()
 
         # Parse JSON from LLM response
         parsed = json.loads(json_content)
