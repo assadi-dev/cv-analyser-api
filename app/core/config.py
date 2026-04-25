@@ -79,10 +79,10 @@ class Settings(BaseSettings):
     # AI Provider defaults (fallback)
     # -------------------------------------------------------------------------
     default_ai_provider: str = Field(default="ollama")
-    default_ai_model: str = Field(default="llama3.2")
+    default_ai_model: str = Field(default="gemma4:latest")
     openai_api_key: str = Field(default="")
     default_ai_base_url: str = Field(default="http://localhost:11434")
-    llm_temperature: float = Field(default=0.1)
+    llm_temperature: float = Field(default=0.3)
 
     # -------------------------------------------------------------------------
     # File storage
