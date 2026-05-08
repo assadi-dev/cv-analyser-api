@@ -1,5 +1,6 @@
 """Auth schemas — token exchange and session."""
 
+from app.schemas.encryption import DecryptionPayload
 from datetime import datetime
 from pydantic import Field
 
@@ -42,14 +43,10 @@ class RemoveUserRequest(AppBaseModel):
     confirm: bool = Field(False, description="Confirmation")  
 
 
-class TokenExchangeRequest(AppBaseModel):
+class TokenExchangeRequest(DecryptionPayload):
     """Request body for the token exchange endpoint."""
+    pass
 
-    session_token: str = Field(
-        ...,
-        min_length=10,
-        description="better-auth session token obtained after login",
-    )
 
 
 class TokenResponse(AppBaseModel):

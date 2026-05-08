@@ -5,6 +5,11 @@ This is the ONLY bridge between better-auth (Next.js) and FastAPI.
 After the exchange, FastAPI operates fully autonomously with its own JWT.
 """
 
+from app.repositories.preference_repo import PreferenceRepository
+from app.factory.user_factory import UserFactory
+from datetime import datetime
+from app.services.encryption_serrvice import EncryptionService
+from app.factory import user_factory
 from app.factory.token_response_factory import TokenResponseFactory
 from app.core.security import get_jwt_payload
 from app.schemas.auth import LoginRequest
@@ -61,7 +66,7 @@ async def login(
 @router.post(
     "/token",
     response_model=TokenResponse,
-    summary="Exchange better-auth session for a FastAPI API token",
+    summary="Obtain a FastAPI API token",
     description=(
         "Called once after login on the Next.js frontend. "
         "Validates the better-auth session token, creates/syncs the user in the "
@@ -80,40 +85,36 @@ async def exchange_token(
     3. Generate and return a FastAPI autonomous JWT
     """
     # Step 1 — Validate better-auth session
-    session_user = await verify_better_auth_session(body.session_token)
 
-    better_auth_id: str = session_user.get("id", "")
-    email: str = session_user.get("email", "")
-
-    logger.info(
-        "Token exchange initiated",
-        extra={"better_auth_id": better_auth_id, "email": email},
-    )
+    encryptionService = EncryptionService()
+    decrypted_data = encryptionService.decrypt(body)
+    user_factory = UserFactory.decrypt_request_to_user_model(decrypted_data)
 
     # Step 2 — Upsert user in FastAPI DB
     user_repo = UserRepository(db)
     user, created = await user_repo.get_or_create_from_session(
-        better_auth_id=better_auth_id,
-        email=email,
-        first_name=session_user.get("name", "").split(" ")[0] if session_user.get("name") else None,
-        last_name=" ".join(session_user.get("name", "").split(" ")[1:]) or None,
-        avatar_url=session_user.get("image"),
-        auth_provider=session_user.get("provider", "email"),
-    )
+            email=user_factory.email,
+            first_name=user_factory.first_name,
+            last_name=user_factory.last_name,
+            avatar_url=user_factory.avatar_url,
+            professional_title=user_factory.professional_title,
+            auth_provider=user_factory.auth_provider,
+        ) 
+    
 
     if created:
+        preference_repo = PreferenceRepository(db)
+        await preference_repo.create_settings(str(user.id))
+        logger.info(f"User preferences created successfully")
         logger.info("New user created via token exchange", extra={"user_id": str(user.id)})
 
+
     # Step 3 — Generate FastAPI autonomous JWT
-    api_token = create_api_token(str(user.id))
+    response = TokenResponseFactory.build_token_response(str(user.id))
 
     logger.info(
         "API token issued",
         extra={"user_id": str(user.id), "new_user": created},
     )
 
-    return TokenResponse(
-        api_token=api_token,
-        token_type="bearer",
-        expires_in_days=settings.api_token_expire_days,
-    )
+    return response

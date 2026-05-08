@@ -86,3 +86,8 @@ Thumbs.db
 *.tmp
 *.bak
 *.swp
+
+# Secrets
+secrets/*
+
+tests

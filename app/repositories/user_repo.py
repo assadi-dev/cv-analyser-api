@@ -47,11 +47,11 @@ class UserRepository(BaseRepository[User]):
 
     async def get_or_create_from_session(
         self,
-        better_auth_id: str,
         email: str,
         first_name: str | None = None,
         last_name: str | None = None,
         avatar_url: str | None = None,
+        professional_title: str | None = None,
         auth_provider: str = "email",
     ) -> tuple[User, bool]:
         """
@@ -69,6 +69,7 @@ class UserRepository(BaseRepository[User]):
             last_name=last_name,
             avatar_url=avatar_url,
             auth_provider=auth_provider,
+            professional_title=professional_title,
         )
         
         self.db.add(new_user)

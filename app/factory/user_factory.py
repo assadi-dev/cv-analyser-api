@@ -1,5 +1,9 @@
+import json
+from app.schemas.encryption import DecryptionPayload
 from app.models.user import User
 from app.schemas.auth import RegisterRequest
+
+
 class UserFactory:
     def __init__(self):
         pass
@@ -26,3 +30,18 @@ class UserFactory:
             if hasattr(user, key):
                 setattr(user, key, value)
         return user
+
+
+    @staticmethod
+    def decrypt_request_to_user_model(inputs: str) -> User:
+        json_data = json.loads(inputs)   
+        return User(
+            email=json_data.get("email"),
+            first_name=json_data.get("first_name"),
+            last_name=json_data.get("last_name"),
+            password=json_data.get("password") or None,
+            auth_provider=json_data.get("auth_provider") or None,
+            professional_title=json_data.get("professional_title") or None,
+            avatar_url=json_data.get("avatar_url") or None,
+            email_verified=json_data.get("email_verified") or False
+        )

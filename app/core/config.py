@@ -90,6 +90,7 @@ class Settings(BaseSettings):
     upload_dir: str = Field(default="uploads")
     max_cv_size_mb: int = Field(default=10, ge=1, le=50)
     cv_dir: str = Field(default="cv")
+    secrets_dir: str = Field(default="secrets")
 
     # -------------------------------------------------------------------------
     # Allowed CV extensions
