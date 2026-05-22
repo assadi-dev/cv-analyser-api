@@ -177,7 +177,7 @@ class AnalyseService:
         # ---------------------------------------------------------------
         yield {"type": "done", "analyse_id": str(analyse.id)}
 
-    async def run_stream_cv(self, *, user_id: uuid.UUID, request: AnalyseRequestTemporary) -> AsyncGenerator[dict[str, Any], None]:
+    async def run_stream_anonymous(self, *, user_id: uuid.UUID, request: AnalyseRequestTemporary) -> AsyncGenerator[dict[str, Any], None]:
         """
         Executes the LangGraph pipeline and yields SSE events.
 

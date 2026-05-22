@@ -135,7 +135,7 @@ async def analyse_temporary_task(queue: asyncio.Queue,db, user_id:uuid.UUID, req
 
     service = AnalyseService(db)
     try:
-        async for event in service.run_stream_cv(user_id = user_id,request = request):
+        async for event in service.run_stream_anonymous(user_id = user_id,request = request):
             await queue.put(f"data: {json.dumps(event)}\n\n")
     except Exception as exc:
         logger.error(
