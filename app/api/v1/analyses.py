@@ -2,11 +2,14 @@
 Analyses router — AI analysis with SSE streaming.
 """
 
+from app.services.cv_service import CVService
 import asyncio
 import json
 import uuid
 
-from fastapi import APIRouter, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +19,7 @@ from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
 from app.repositories.analyse_repo import AnalyseRepository
 from app.repositories.candidature_repo import CandidatureRepository
-from app.schemas.analyse import AnalyseRequest, AnalyseResponse, ChatMessageRequest, ChatResponse,AnalyseRequestTemporary
+from app.schemas.analyse import AnalyseRequest, AnalyseResponse, ChatMessageRequest, ChatResponse
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/analyses", tags=["Analyses"])
@@ -126,7 +129,7 @@ async def chat(
     return ChatResponse(analyse_id=body.analyse_id, message=reply)
 
 
-async def analyse_temporary_task(queue: asyncio.Queue):
+async def analyse_temporary_task(queue: asyncio.Queue, cv_text:str, job_description:str):
    for i in range(10):
        await asyncio.sleep(1)
        event = {
@@ -147,19 +150,28 @@ async def analyse_temporary_task(queue: asyncio.Queue):
     summary="Start a temporary AI analysis with SSE real-time streaming",
 )
 async def stream_analyse_temporary(
-    body: AnalyseRequestTemporary,
+    job_description: Annotated[str, Form(min_length=50, description="Raw job offer text")],
+    cv_file: Annotated[UploadFile | None, File(description="CV file to analyse")] = None,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
     """
     SSE streaming endpoint for temporary users.
     """
+    # TODO: Implement the extraction of the CV text from the file
+    cv_text:str | None = None
+    if cv_file:
+        cv_service = CVService(db)
+        cv_text = await cv_service.extract_cv_text(cv_file, user_id)
+
+   
+     
 
     async def event_generator():
         queue = asyncio.Queue()
         analyse_task = None
         try:
-            analyse_task = asyncio.create_task(analyse_temporary_task(queue))
+            analyse_task = asyncio.create_task(analyse_temporary_task(queue, cv_text, job_description))
             while not analyse_task.done():
                 yield await queue.get()
         except asyncio.CancelledError:

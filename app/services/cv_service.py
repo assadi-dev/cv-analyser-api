@@ -2,6 +2,11 @@
 CV parsing service — extracts plain text from PDF, DOCX, and TXT files.
 """
 
+from app.services.extract_text_service import ExtractTextService
+from app.core.config import settings
+from app.services.upload_servive import UploadService
+from app.services.cv_parser_services import CVParserService
+from fastapi import UploadFile
 from app.services.cv_upload_services import CVUploadService
 from app.core.exceptions import NotFoundError
 from app.schemas.cv import CVUpdateRequest
@@ -12,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import get_logger
 from app.models.cv import CV
 import uuid
+from pathlib import Path
 
 logger = get_logger(__name__)
 
@@ -21,6 +27,8 @@ class CVService:
         self.db = db
         self.cv_repo = CVRepository(db)
         self.cv_upload_service = CVUploadService()
+        self.cv_parser = CVParserService()
+        self.upload_service = UploadService()
 
     
     async def get_user_cvs(self, user_id: str) -> list[CV]:
@@ -87,3 +95,15 @@ class CVService:
         await self.cv_upload_service.unlink_all_cv_files(user_id)
         await self.cv_repo.remove_all_user_cvs(user_id)
         logger.info("All CVs deleted", extra={"user_id": user_id})
+
+    async def extract_cv_text(self, cv_file: UploadFile, user_id: str) -> str:
+        """
+        Extract text from a CV file.
+        """
+        key = self.upload_service.generate_file_key(cv_file)
+        file_path = await self.upload_service.save_file(cv_file, user_id, settings.cv_dir, key)
+        extract_text_service = ExtractTextService()
+        text = extract_text_service.extract_text_from_pdf(Path(file_path))
+        await self.upload_service.remove_file(file_path)
+        return text
+

@@ -75,15 +75,12 @@ class AnalyseRequest(AppBaseModel):
     )
 
 class AnalyseRequestTemporary(AppBaseModel):
-    """Request body to start an AI analysis."""
+    """Request body to start an AI analysis (no auth required)."""
+
     job_description: str = Field(
         ...,
         min_length=50,
         description="Raw job offer text",
-    )
-    cv_text: str | None = Field(
-        default=None,
-        description="Pre-extracted CV text — if None, the stored CV file is parsed",
     )
 
 
