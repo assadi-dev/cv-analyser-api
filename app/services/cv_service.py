@@ -92,9 +92,9 @@ class CVService:
         """
         Remove all CVs for a user.
         """
-        await self.cv_upload_service.unlink_all_cv_files(user_id)
+        await self.cv_upload_service.unlink_all_cv_files(str(user_id))
         await self.cv_repo.remove_all_user_cvs(user_id)
-        logger.info("All CVs deleted", extra={"user_id": user_id})
+        logger.info("All CVs deleted", extra={"user_id": str(user_id)})
 
     async def extract_cv_text(self, cv_file: UploadFile, user_id: str) -> str:
         """

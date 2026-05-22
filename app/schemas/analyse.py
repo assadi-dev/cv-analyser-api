@@ -66,7 +66,6 @@ class AnalyseRequest(AppBaseModel):
     )
     job_description: str = Field(
         ...,
-        min_length=50,
         description="Raw job offer text",
     )
     cv_text: str | None = Field(
@@ -76,10 +75,12 @@ class AnalyseRequest(AppBaseModel):
 
 class AnalyseRequestTemporary(AppBaseModel):
     """Request body to start an AI analysis (no auth required)."""
-
+    cv_text: str = Field(
+        ...,
+        description="CV text to analyse",
+    )
     job_description: str = Field(
         ...,
-        min_length=50,
         description="Raw job offer text",
     )
 

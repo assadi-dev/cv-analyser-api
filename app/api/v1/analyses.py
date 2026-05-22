@@ -2,6 +2,8 @@
 Analyses router — AI analysis with SSE streaming.
 """
 
+from app.schemas.analyse import AnalyseRequestTemporary
+from app.services.analyse_service import AnalyseService
 from app.services.cv_service import CVService
 import asyncio
 import json
@@ -129,18 +131,28 @@ async def chat(
     return ChatResponse(analyse_id=body.analyse_id, message=reply)
 
 
-async def analyse_temporary_task(queue: asyncio.Queue, cv_text:str, job_description:str):
-   for i in range(10):
-       await asyncio.sleep(1)
-       event = {
-           "type": "progress",
-           "progress": (i+1) * 10,
-           "data": {
-               "message": f"Step {i+1}/10"
-           }
-       }
-       await queue.put(f"data: {json.dumps(event)}\n\n")
-   await queue.put("data: done\n\n")
+async def analyse_temporary_task(queue: asyncio.Queue,db, user_id:uuid.UUID, request:AnalyseRequestTemporary):
+
+    service = AnalyseService(db)
+    try:
+        async for event in service.run_stream_cv(user_id = user_id,request = request):
+            await queue.put(f"data: {json.dumps(event)}\n\n")
+    except Exception as exc:
+        logger.error(
+            "SSE stream error",
+            exc_info=exc,
+            extra={"user_id": user_id},
+        )
+        error_event = {
+            "type": "error",
+            "message": "Analysis failed. Please try again.",
+            "error_code": "ANALYSIS_FAILED",
+        }
+        await queue.put(f"data: {json.dumps(error_event)}\n\n")
+
+
+ 
+    await queue.put("data: done\n\n")
        
 
 
@@ -164,14 +176,19 @@ async def stream_analyse_temporary(
         cv_service = CVService(db)
         cv_text = await cv_service.extract_cv_text(cv_file, user_id)
 
-   
+    if cv_text is None:
+        raise ValueError("CV text is required")
      
 
     async def event_generator():
         queue = asyncio.Queue()
         analyse_task = None
         try:
-            analyse_task = asyncio.create_task(analyse_temporary_task(queue, cv_text, job_description))
+            analyse_request = AnalyseRequestTemporary(
+                cv_text=cv_text,
+                job_description=job_description,
+            )
+            analyse_task = asyncio.create_task(analyse_temporary_task(queue, db, uuid.UUID(user_id), analyse_request))
             while not analyse_task.done():
                 yield await queue.get()
         except asyncio.CancelledError:
