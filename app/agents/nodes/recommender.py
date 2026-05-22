@@ -6,13 +6,15 @@ based on the analysis results.
 """
 
 from typing import Literal
+
 from langchain_core.messages import HumanMessage, SystemMessage
-from pydantic import BaseModel, Field
 from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from pydantic import BaseModel, Field
+
 from app.agents.state import AnalyseState
 from app.core.logging import get_logger
 from app.services.provider_service import ProviderService
-from langchain_core.prompts import ChatPromptTemplate
 
 logger = get_logger(__name__)
 
@@ -24,17 +26,20 @@ class Recommendation(BaseModel):
     impact: Literal["high", "medium", "low"] = Field(..., description="Impact of recommendation")
 
 
-RECOMMENDER_SYSTEM_PROMPT = """You are an expert career coach and CV optimization specialist.
+def _build_recommender_system_prompt(language: str) -> str:
+    lang = "French" if language == "fr" else "English"
+    return f"""You are an expert career coach and CV optimization specialist.
 Based on the CV-job match analysis, generate clear, actionable recommendations.
+IMPORTANT: All text fields (title, description) MUST be written in {lang}.
 
 Respond ONLY with a valid JSON array of recommendation objects:
 [
-   {{
+   {{{{
         "type": "warning|success|info",
-        "title": "<short title (max 60 chars)>",
-        "description": "<actionable explanation (max 200 chars)>",
+        "title": "<short title in {lang} (max 60 chars)>",
+        "description": "<actionable explanation in {lang} (max 200 chars)>",
         "impact": "high|medium|low"
-    }}
+    }}}}
 ]
 
 Rules:
@@ -43,15 +48,12 @@ Rules:
 - "info": a neutral tip or suggestion
 - Sort by impact: high → medium → low
 - Maximum 5 recommendations
-- Be specific and actionable, not generic
-"""
+- Be specific and actionable, not generic"""
 
 
-def _build_recommender_prompt(state: AnalyseState, language: str) -> str:
-    lang = "French" if language == "fr" else "English"
+def _build_recommender_prompt(state: AnalyseState) -> str:
     missing = ", ".join(state.get("keywords_missing", [])[:10])
     return (
-        f"Generate recommendations in {lang}.\n\n"
         f"=== ANALYSIS RESULTS ===\n"
         f"Global score: {state.get('score_global', 0)}/100\n"
         f"ATS score: {state.get('score_ats', 0)}/100\n"
@@ -101,14 +103,13 @@ async def generate_recommendations_node(state: AnalyseState) -> dict:
         )
 
         prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content=RECOMMENDER_SYSTEM_PROMPT),
+            SystemMessage(content=_build_recommender_system_prompt(language)),
             HumanMessage(content="{input}"),
         ])
 
         chain = prompt | llm | parser
 
-        response = await chain.ainvoke({"input": _build_recommender_prompt(state, language)})
-
+        response = await chain.ainvoke({"input": _build_recommender_prompt(state)})
         recommandations: list[dict] = response
 
     except Exception as exc:
@@ -118,7 +119,6 @@ async def generate_recommendations_node(state: AnalyseState) -> dict:
         )
         recommandations = _FALLBACK_RECOMMENDATIONS
 
-    # Progress event
     progress_event = {
         "type": "progress",
         "step": "recommendations",
@@ -126,7 +126,6 @@ async def generate_recommendations_node(state: AnalyseState) -> dict:
         "data": {"count": len(recommandations)},
     }
 
-    # Final result event
     result_event = {
         "type": "result",
         "score_global": state.get("score_global", 0),

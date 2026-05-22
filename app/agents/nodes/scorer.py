@@ -26,33 +26,32 @@ class ScoreResult(BaseModel):
     score_experience: int = Field(default=70, ge=0, le=100, description="Experience relevance score (0-100)")
     reasoning: ScoreReasoning = Field(..., description="Reasoning behind the scores")
 
-SCORER_SYSTEM_PROMPT = """You are an expert HR analyst and ATS specialist.
+def _build_scorer_system_prompt(language: str) -> str:
+    lang = "French" if language == "fr" else "English"
+    return f"""You are an expert HR analyst and ATS specialist.
 Your task is to analyze the match between a CV and a job offer.
+IMPORTANT: All text values in the JSON (reasoning fields) MUST be written in {lang}.
 
 Respond ONLY with a valid JSON object in this exact format:
-{{
+{{{{
     "score_competences": <integer 0-100>,
     "score_experience": <integer 0-100>,
-    "reasoning": {{
-        "competences": "<brief explanation>",
-        "experience": "<brief explanation>"
-        }}
-    }}
-}
+    "reasoning": {{{{
+        "competences": "<brief explanation in {lang}>",
+        "experience": "<brief explanation in {lang}>"
+    }}}}
+}}}}
 
 Scoring guidelines:
 - score_competences: How well the technical skills in the CV match the job requirements
 - score_experience: How relevant the years and type of experience are to the role
-- 0 = no match, 50 = partial match, 80+ = strong match, 100 = perfect match
-"""
+- 0 = no match, 50 = partial match, 80+ = strong match, 100 = perfect match"""
 
 
-def _build_scorer_prompt(cv_text: str, job_text: str, language: str) -> str:
-    lang_instruction = "Analyze in French." if language == "fr" else "Analyze in English."
+def _build_scorer_prompt(cv_text: str, job_text: str) -> str:
     return (
-        f"{lang_instruction}\n\n"
-        f"=== JOB OFFER ===\n{job_text[:3000]}\n\n"
-        f"=== CANDIDATE CV ===\n{cv_text[:3000]}"
+        f"=== JOB OFFER ===\n{job_text}\n\n"
+        f"=== CANDIDATE CV ===\n{cv_text}"
     )
 
 
@@ -77,11 +76,11 @@ def compute_global_score(
     Returns:
         Weighted global score as integer 0-100.
     """
-    return int(round(
+    return round(
         score_ats * 0.30
         + score_competences * 0.45
         + score_experience * 0.25
-    ))
+    )
 
 
 async def compute_score_node(state: AnalyseState) -> dict:
@@ -107,23 +106,21 @@ async def compute_score_node(state: AnalyseState) -> dict:
 
         parser = JsonOutputParser(pydantic_object=ScoreResult)
 
+        language = state.get("language", "fr")
+
         prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content=SCORER_SYSTEM_PROMPT),
+            SystemMessage(content=_build_scorer_system_prompt(language)),
             HumanMessage(content="{input}"),
         ])
 
         chain = prompt | llm | parser
 
         response = await chain.ainvoke({
-            "input": _build_scorer_prompt(
-                    state["cv_text"],
-                    state["job_text"],
-                    state.get("language", "fr"),
-                )
-            })
+            "input": _build_scorer_prompt(state["cv_text"], state["job_text"])
+        })
 
-        score_competences = int(response.get("score_competences", 70))
-        score_experience = int(response.get("score_experience", 70))
+        score_competences = response.get("score_competences", 70)
+        score_experience = response.get("score_experience", 70)
 
     except Exception as exc:
         logger.warning(

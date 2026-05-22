@@ -129,17 +129,16 @@ class AnalyseService:
         # Step 4 — Run graph and yield events
         # ---------------------------------------------------------------
         final_state: dict[str, Any] = {}
+        yielded_event_count = 0
 
         async for step_output in analyse_graph.astream(initial_state):
-            # Each step_output is {node_name: state_updates}
             for node_name, updates in step_output.items():
-                # Yield any new SSE events produced by this node
-                new_events: list[dict] = updates.get("stream_events", [])
-                for event in new_events:
-                    if event not in initial_state.get("stream_events", []):
-                        yield event
-
-                # Merge updates into final_state for persistence
+                # Each node accumulates all previous events + its own new ones.
+                # Slice from where we left off to yield only the new ones.
+                all_events: list[dict] = updates.get("stream_events", [])
+                for event in all_events[yielded_event_count:]:
+                    yield event
+                yielded_event_count = len(all_events)
                 final_state.update(updates)
 
         # ---------------------------------------------------------------
@@ -191,7 +190,6 @@ class AnalyseService:
 
         Args:
             user_id:      Authenticated user's UUID.
-            cv_text:      The CV text to analyse.
             request:      Analysis request body.
 
         Yields:
@@ -252,20 +250,15 @@ class AnalyseService:
         # Step 4 — Run graph and yield events
         # ---------------------------------------------------------------
         final_state: dict[str, Any] = {}
+        yielded_event_count = 0
 
         async for step_output in analyse_graph.astream(initial_state):
-            # Each step_output is {node_name: state_updates}
             for node_name, updates in step_output.items():
-                # Yield any new SSE events produced by this node
-                new_events: list[dict] = updates.get("stream_events", [])
-                for event in new_events:
-                    if event not in initial_state.get("stream_events", []):
-                        yield event
-
-                # Merge updates into final_state for persistence
+                all_events: list[dict] = updates.get("stream_events", [])
+                for event in all_events[yielded_event_count:]:
+                    yield event
+                yielded_event_count = len(all_events)
                 final_state.update(updates)
-
- 
 
         logger.info(
             "Analysis completed",
