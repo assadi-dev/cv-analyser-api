@@ -162,7 +162,7 @@ async def analyse_temporary_task(queue: asyncio.Queue,db, user_id:uuid.UUID, req
     summary="Start a temporary AI analysis with SSE real-time streaming",
 )
 async def stream_analyse_temporary(
-    job_description: Annotated[str, Form(min_length=50, description="Raw job offer text")],
+    job_description: Annotated[str, Form(min_length=10, description="Raw job offer text")],
     cv_file: Annotated[UploadFile | None, File(description="CV file to analyse")] = None,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
