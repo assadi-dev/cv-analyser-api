@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user_id
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, UnprocessableError
 from app.core.logging import get_logger
 from app.repositories.analyse_repo import AnalyseRepository
 from app.repositories.candidature_repo import CandidatureRepository
@@ -163,22 +163,25 @@ async def analyse_temporary_task(queue: asyncio.Queue,db, user_id:uuid.UUID, req
 )
 async def stream_analyse_temporary(
     job_description: Annotated[str, Form(min_length=10, description="Raw job offer text")],
-    cv_file: Annotated[UploadFile | None, File(description="CV file to analyse")] = None,
+    cv_file: Annotated[UploadFile, File(description="CV file to analyse")],
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
     """
     SSE streaming endpoint for temporary users.
-    """
-    # TODO: Implement the extraction of the CV text from the file
-    cv_text:str | None = None
-    if cv_file:
-        cv_service = CVService(db)
-        cv_text = await cv_service.extract_cv_text(cv_file, user_id)
 
-    if cv_text is None:
-        raise ValueError("CV text is required")
-     
+    Expects multipart/form-data — `job_description` as a text field and
+    `cv_file` as a file upload. Sending a JSON body yields a 422.
+    """
+    cv_service = CVService(db)
+    cv_text = await cv_service.extract_cv_text(cv_file, user_id)
+
+    if not cv_text or not cv_text.strip():
+        raise UnprocessableError(
+            detail="No text could be extracted from the CV file.",
+            context={"filename": cv_file.filename},
+        )
+
 
     async def event_generator():
         queue = asyncio.Queue()

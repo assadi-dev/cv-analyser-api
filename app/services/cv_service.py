@@ -98,12 +98,20 @@ class CVService:
 
     async def extract_cv_text(self, cv_file: UploadFile, user_id: str) -> str:
         """
-        Extract text from a CV file.
+        Extract text from a CV file (PDF, DOCX or TXT).
+
+        Raises:
+            UnsupportedFileTypeError: The file extension is not supported.
+            InternalError:            The file could not be parsed.
         """
         key = self.upload_service.generate_file_key(cv_file)
         file_path = await self.upload_service.save_file(cv_file, user_id, settings.cv_dir, key)
         extract_text_service = ExtractTextService()
-        text = extract_text_service.extract_text_from_pdf(Path(file_path))
-        await self.upload_service.remove_file(file_path)
-        return text
+        try:
+            # Dispatch on the extension — hardcoding the PDF parser made every
+            # DOCX and TXT upload fail with a 500.
+            return extract_text_service.extract_text(Path(file_path))
+        finally:
+            # The upload is a scratch copy: remove it even when parsing fails.
+            await self.upload_service.remove_file(file_path)
 

@@ -20,6 +20,36 @@ logger = get_logger(__name__)
 
 class ExtractTextService:
 
+    SUPPORTED_EXTENSIONS: tuple[str, ...] = (".pdf", ".docx", ".txt")
+
+    def extract_text(self, path: Path) -> str:
+        """
+        Extracts text from a CV file, dispatching on its extension.
+
+        Args:
+            path: Path to the file to parse.
+
+        Returns:
+            The extracted plain text.
+
+        Raises:
+            UnsupportedFileTypeError: Extension is not one of SUPPORTED_EXTENSIONS.
+            InternalError:            The file matched a supported type but could
+                                      not be parsed (corrupted, unreadable...).
+        """
+        extension = path.suffix.lower()
+
+        if extension == ".pdf":
+            return self.extract_text_from_pdf(path)
+        if extension == ".docx":
+            return self.extract_text_from_docx(path)
+        if extension == ".txt":
+            return self.extract_text_from_txt(path)
+
+        raise UnsupportedFileTypeError(
+            detail=f"Unsupported file type: {extension or path.name}",
+            context={"extension": extension, "supported": list(self.SUPPORTED_EXTENSIONS)},
+        )
 
     def extract_text_from_pdf_ocr(self, path: Path) -> str:
         """Extracts text from a PDF file using OCR."""
@@ -81,6 +111,9 @@ class ExtractTextService:
             )
             return full_text
 
+        except UnsupportedFileTypeError:
+            # Domain error: keep the 415, don't downgrade it to a 500 below.
+            raise
         except Exception as exc:
             logger.error("PDF parsing failed", exc_info=exc, extra={"path": str(path)})
             raise InternalError(detail=f"Failed to parse PDF: {exc}") from exc
@@ -141,6 +174,8 @@ class ExtractTextService:
             )
             return full_text
 
+        except UnsupportedFileTypeError:
+            raise
         except Exception as exc:
             logger.error("DOCX parsing failed", exc_info=exc, extra={"path": str(path)})
             raise InternalError(detail=f"Failed to parse DOCX: {exc}") from exc
@@ -158,6 +193,8 @@ class ExtractTextService:
                 extra={"path": str(path), "chars": len(full_text)},
             )
             return full_text
+        except UnsupportedFileTypeError:
+            raise
         except Exception as exc:
             logger.error("TXT parsing failed", exc_info=exc, extra={"path": str(path)})
             raise InternalError(detail=f"Failed to parse TXT: {exc}") from exc
