@@ -131,11 +131,23 @@ async def chat(
     return ChatResponse(analyse_id=body.analyse_id, message=reply)
 
 
-async def analyse_temporary_task(queue: asyncio.Queue,db, user_id:uuid.UUID, request:AnalyseRequestTemporary):
+# Sentinel pushed on the queue once the producer task is over. An explicit
+# end-of-stream marker is what lets the consumer drain everything already
+# queued: polling Task.done() instead would stop the loop while the last
+# events are still sitting in the queue.
+_STREAM_END = object()
 
+
+async def analyse_temporary_task(
+    queue: asyncio.Queue,
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    request: AnalyseRequestTemporary,
+) -> None:
+    """Runs the analysis pipeline and pushes each SSE frame onto the queue."""
     service = AnalyseService(db)
     try:
-        async for event in service.run_stream_anonymous(user_id = user_id,request = request):
+        async for event in service.run_stream_anonymous(user_id=user_id, request=request):
             await queue.put(f"data: {json.dumps(event)}\n\n")
     except Exception as exc:
         logger.error(
@@ -149,11 +161,10 @@ async def analyse_temporary_task(queue: asyncio.Queue,db, user_id:uuid.UUID, req
             "error_code": "ANALYSIS_FAILED",
         }
         await queue.put(f"data: {json.dumps(error_event)}\n\n")
-
-
- 
-    await queue.put("data: done\n\n")
-       
+    finally:
+        # Always signal the end, including on error — otherwise the consumer
+        # would wait on queue.get() forever.
+        await queue.put(_STREAM_END)
 
 
 @router.post(
@@ -191,9 +202,14 @@ async def stream_analyse_temporary(
                 cv_text=cv_text,
                 job_description=job_description,
             )
-            analyse_task = asyncio.create_task(analyse_temporary_task(queue, db, uuid.UUID(user_id), analyse_request))
-            while not analyse_task.done():
-                yield await queue.get()
+            analyse_task = asyncio.create_task(
+                analyse_temporary_task(queue, db, uuid.UUID(user_id), analyse_request)
+            )
+            while True:
+                frame = await queue.get()
+                if frame is _STREAM_END:
+                    break
+                yield frame
         except asyncio.CancelledError:
             logger.info("Client déconnecté")
         except Exception as exc:
