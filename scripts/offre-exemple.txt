@@ -1,0 +1,23 @@
+Développeur Full Stack — Preedia (plateforme collaborative de transactions immobilières)
+
+LE POSTE
+Tu rejoins une petite équipe et tu prends en charge le développement du produit. Le socle technique existe, l'architecture est posée, les fonctionnalités d'intelligence artificielle sont en place. Ton rôle n'est pas de refonder le produit mais de le faire vivre et grandir : livrer les évolutions attendues par les utilisateurs, corriger ce qui remonte du terrain, ajouter de nouvelles fonctionnalités au fil des retours des études notariales et des agences.
+
+MISSIONS
+- Développer de nouvelles fonctionnalités, du modèle de données à l'interface, sur le web et sur le module mobile
+- Améliorer et fiabiliser l'existant : performance, ergonomie, correction de bugs, réduction de la dette technique
+- Faire évoluer les règles d'accès et de cloisonnement des données entre les profils utilisateurs
+- Maintenir et faire évoluer les fonctionnalités d'analyse documentaire et de suggestion assistées par intelligence artificielle
+- Intégrer et maintenir des services tiers : signature électronique, vérification d'identité, recommandé électronique légal, emails transactionnels
+- Contribuer à la qualité générale du code : tests, revues, documentation
+- Préparer les mises en production et suivre l'application en conditions réelles
+- Participer aux discussions produit
+
+COMPÉTENCES TECHNIQUES
+Indispensables : JavaScript et TypeScript, bonne maîtrise de React ; PostgreSQL et écriture de requêtes SQL ; Conception et consommation d'API REST ; Git et bonnes pratiques de développement en équipe.
+Appréciées : RAG (Retrieval Augmented Generation), bases vectorielles (Pinecone, Weaviate) ; Agents IA, orchestration (LangChain, LlamaIndex) ; Microservices, déploiement cloud (AWS / GCP / Vercel) ; Mobile (React Native ou Flutter).
+
+PROFIL RECHERCHÉ
+Au moins trois ans d'expérience en développement web, déjà travaillé sur un produit en production avec de vrais utilisateurs. À l'aise pour reprendre du code que tu n'as pas écrit et le faire évoluer sans tout réécrire. Autonome pour transformer une spécification fonctionnelle en fonctionnalité livrée. Rigueur sur les sujets de confidentialité et de cloisonnement des données.
+
+Rémunération : 36 000 à 44 000 € par an. Lieu du poste : En présentiel. Télétravail occasionnel.

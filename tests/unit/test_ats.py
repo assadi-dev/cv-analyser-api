@@ -6,7 +6,7 @@ Tests keyword extraction, ATS score computation, and edge cases.
 
 import pytest
 
-from app.agents.nodes.ats import compute_ats_score, extract_keywords
+from app.agents.nodes.ats import compute_ats_score, extract_keywords, extract_vocabulary
 
 
 class TestExtractKeywords:
@@ -29,10 +29,29 @@ class TestExtractKeywords:
         assert "with" not in result
 
     def test_removes_short_tokens(self):
-        result = extract_keywords("AI ML developer")
-        # "AI" and "ML" are 2 chars — should be excluded (min 3 chars)
-        assert "ai" not in result
-        assert "ml" not in result
+        result = extract_keywords("xy zw developer")
+        # Tokens under 3 chars are noise unless they are known tech terms.
+        assert "xy" not in result
+        assert "zw" not in result
+
+    def test_keeps_short_tech_tokens(self):
+        result = extract_keywords("AI ML JS CI developer")
+        # These are real skills despite being 2 chars — see SHORT_TECH_TOKENS.
+        assert {"ai", "ml", "js", "ci"} <= set(result)
+
+    def test_folds_accents(self):
+        result = extract_keywords("Développement de données et fonctionnalités")
+        # Accents must not truncate the word ("développement" -> "veloppement").
+        assert "developpement" in result
+        assert "donnees" in result
+        assert "fonctionnalites" in result
+        assert "veloppement" not in result
+
+    def test_accented_cv_matches_unaccented_job(self):
+        vocabulary = extract_vocabulary("Expérience en développement de données")
+        score, found, missing = compute_ats_score(vocabulary, ["developpement", "donnees"])
+        assert score == 100
+        assert missing == []
 
     def test_top_n_limit(self):
         text = " ".join([f"keyword{i}" for i in range(100)])

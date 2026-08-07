@@ -8,12 +8,12 @@ Uses the configured AI provider to semantically evaluate:
 """
 
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
+
 from app.agents.state import AnalyseState
 from app.core.logging import get_logger
 from app.services.provider_service import ProviderService
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
 
 logger = get_logger(__name__)
 
@@ -33,14 +33,14 @@ Your task is to analyze the match between a CV and a job offer.
 IMPORTANT: All text values in the JSON (reasoning fields) MUST be written in {lang}.
 
 Respond ONLY with a valid JSON object in this exact format:
-{{{{
+{{
     "score_competences": <integer 0-100>,
     "score_experience": <integer 0-100>,
-    "reasoning": {{{{
+    "reasoning": {{
         "competences": "<brief explanation in {lang}>",
         "experience": "<brief explanation in {lang}>"
-    }}}}
-}}}}
+    }}
+}}
 
 Scoring guidelines:
 - score_competences: How well the technical skills in the CV match the job requirements
@@ -53,6 +53,29 @@ def _build_scorer_prompt(cv_text: str, job_text: str) -> str:
         f"=== JOB OFFER ===\n{job_text}\n\n"
         f"=== CANDIDATE CV ===\n{cv_text}"
     )
+
+
+def _coerce_score(value: object) -> int | None:
+    """
+    Converts an LLM-provided score into a clamped 0-100 integer.
+
+    LLMs sometimes answer with "85", 85.0, or the literal schema placeholder
+    "<integer 0-100>". Anything that is not a number is rejected so the caller
+    can fall back instead of silently scoring 0.
+
+    Args:
+        value: Raw value taken from the parsed JSON response.
+
+    Returns:
+        Integer in 0-100, or None if the value is not a usable number.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        score = round(float(value))
+    except ValueError:
+        return None
+    return max(0, min(100, score))
 
 
 def compute_global_score(
@@ -108,19 +131,24 @@ async def compute_score_node(state: AnalyseState) -> dict:
 
         language = state.get("language", "fr")
 
-        prompt = ChatPromptTemplate.from_messages([
+        # The messages are built directly rather than through ChatPromptTemplate:
+        # from_messages() treats SystemMessage/HumanMessage instances as literal
+        # messages, so a "{input}" placeholder would be sent to the LLM verbatim
+        # instead of being replaced by the CV. Building them here also avoids
+        # having to brace-escape CV text that may legitimately contain "{".
+        messages = [
             SystemMessage(content=_build_scorer_system_prompt(language)),
-            HumanMessage(content="{input}"),
-        ])
+            HumanMessage(content=_build_scorer_prompt(state["cv_text"], state["job_text"])),
+        ]
 
-        chain = prompt | llm | parser
+        chain = llm | parser
+        response = await chain.ainvoke(messages)
 
-        response = await chain.ainvoke({
-            "input": _build_scorer_prompt(state["cv_text"], state["job_text"])
-        })
+        score_competences = _coerce_score(response.get("score_competences"))
+        score_experience = _coerce_score(response.get("score_experience"))
 
-        score_competences = response.get("score_competences", 70)
-        score_experience = response.get("score_experience", 70)
+        if score_competences is None or score_experience is None:
+            raise ValueError(f"LLM returned unusable scores: {response!r}")
 
     except Exception as exc:
         logger.warning(

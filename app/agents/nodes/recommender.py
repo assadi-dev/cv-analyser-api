@@ -9,7 +9,6 @@ from typing import Literal
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from app.agents.state import AnalyseState
@@ -34,12 +33,12 @@ IMPORTANT: All text fields (title, description) MUST be written in {lang}.
 
 Respond ONLY with a valid JSON array of recommendation objects:
 [
-   {{{{
+   {{
         "type": "warning|success|info",
         "title": "<short title in {lang} (max 60 chars)>",
         "description": "<actionable explanation in {lang} (max 200 chars)>",
         "impact": "high|medium|low"
-    }}}}
+    }}
 ]
 
 Rules:
@@ -102,14 +101,19 @@ async def generate_recommendations_node(state: AnalyseState) -> dict:
             api_key=state["api_key"],
         )
 
-        prompt = ChatPromptTemplate.from_messages([
+        # Built directly rather than through ChatPromptTemplate: from_messages()
+        # keeps SystemMessage/HumanMessage instances literal, so a "{input}"
+        # placeholder would reach the LLM as-is instead of carrying the analysis.
+        messages = [
             SystemMessage(content=_build_recommender_system_prompt(language)),
-            HumanMessage(content="{input}"),
-        ])
+            HumanMessage(content=_build_recommender_prompt(state)),
+        ]
 
-        chain = prompt | llm | parser
+        chain = llm | parser
+        response = await chain.ainvoke(messages)
 
-        response = await chain.ainvoke({"input": _build_recommender_prompt(state)})
+        if not isinstance(response, list) or not response:
+            raise ValueError(f"LLM returned no usable recommendations: {response!r}")
         recommandations: list[dict] = response
 
     except Exception as exc:
