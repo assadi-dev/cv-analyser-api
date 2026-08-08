@@ -81,10 +81,15 @@ async def resume_recommendation_node(state: AgentChatState) -> dict:
       user_message,
   ]
 
-  response = await llm.ainvoke(messages)
+  # astream (et non ainvoke) : c'est ce qui permet à LangGraph d'émettre les
+  # tokens un par un via stream_mode="messages". Les chunks sont accumulés ici
+  # pour ne stocker qu'un seul message complet dans le state.
+  response = None
+  async for chunk in llm.astream(messages):
+      response = chunk if response is None else response + chunk
 
   # add_messages fusionne ces messages avec l'historique existant
-  return {"messages": [user_message, response]}
+  return {"messages": [user_message, response] if response else [user_message]}
 
     
 
