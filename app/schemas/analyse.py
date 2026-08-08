@@ -59,7 +59,14 @@ class SSEDoneEvent(AppBaseModel):
 class AnalyseRequest(AppBaseModel):
     """Request body to start an AI analysis."""
 
-    candidature_id: uuid.UUID = Field(description="Candidature to attach this analysis to")
+    candidature_id: uuid.UUID | None = Field(
+        default=None,
+        description=(
+            "Candidature to attach this analysis to — the link is recorded on "
+            "the candidature (candidatures.analyse_id) and replaces any "
+            "previous one. Omit for a standalone analysis."
+        ),
+    )
     cv_id: uuid.UUID | None = Field(
         default=None,
         description="CV to use — falls back to user's default CV",
@@ -85,8 +92,8 @@ class AnalyseRequestTemporary(AppBaseModel):
     )
 
 
-# Chat schemas live in app/schemas/chat.py — conversations are now persisted
-# in their own tables rather than in the analyses.chat_history JSON column.
+# Chat schemas live in app/schemas/chat.py — conversations are persisted in
+# their own tables; analyses only keep a pointer to them (conversation_id).
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +112,7 @@ class RecommandationItem(AppBaseModel):
 class AnalyseResponse(IDSchema, TimestampSchema):
     """Full analysis result."""
 
-    candidature_id: uuid.UUID
+    user_id: uuid.UUID
     cv_id: uuid.UUID | None
     score_global: int
     score_ats: int
@@ -114,6 +121,6 @@ class AnalyseResponse(IDSchema, TimestampSchema):
     keywords_found: list[str]
     keywords_missing: list[str]
     recommandations: list[dict[str, Any]]
-    chat_history: list[dict[str, Any]]
+    conversation_id: uuid.UUID | None = None
     ai_provider: str
     ai_model: str

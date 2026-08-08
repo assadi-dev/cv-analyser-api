@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseModel
 
 if TYPE_CHECKING:
+    from app.models.analyse import Analyse
     from app.models.candidature import Candidature
     from app.models.chat_conversation import ChatConversation
     from app.models.cv import CV
@@ -70,6 +71,9 @@ class User(BaseModel):
     )
     conversations: Mapped[list["ChatConversation"]] = relationship(
         "ChatConversation", back_populates="user", cascade="all, delete-orphan"
+    )
+    analyses: Mapped[list["Analyse"]] = relationship(
+        "Analyse", back_populates="user", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:

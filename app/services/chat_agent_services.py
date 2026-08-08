@@ -14,6 +14,7 @@ from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
 from app.models.chat_conversation import ChatConversation
 from app.models.chat_message import ChatMessage
+from app.repositories.analyse_repo import AnalyseRepository
 from app.repositories.chat_conversation_repo import ChatConversationRepository
 from app.repositories.preference_repo import PreferenceRepository
 from app.schemas.chat import ChatStreamRequest
@@ -124,9 +125,19 @@ class ChatAgentService:
             if preference is None:
                 raise NotFoundError(resource="Preference", resource_id=str(user_id))
 
+            # An analyse_id coming from the client must be proven to belong to
+            # the caller before we write the link onto that row.
+            analyse = None
+            if body.analyse_id is not None:
+                analyse_repo = AnalyseRepository(self.db)
+                analyse = await analyse_repo.get_by_user_and_id(user_id, body.analyse_id)
+                if analyse is None:
+                    raise NotFoundError(
+                        resource="Analyse", resource_id=str(body.analyse_id)
+                    )
+
             conversation = await repo.create(
                 user_id=user_id,
-                analyse_id=body.analyse_id,
                 title=body.question[:255],
                 cv_text=body.cv_text,
                 job_description=body.job_description,
@@ -137,6 +148,10 @@ class ChatAgentService:
                 language=preference.preferred_language,
             )
 
+            # The association lives on the analysis side, and only there.
+            if analyse is not None:
+                analyse.conversation_id = conversation.id
+
         user_message = await repo.add_message(
             conversation.id, role="user", content=body.question
         )
@@ -146,6 +161,44 @@ class ChatAgentService:
         await self.db.commit()
 
         return conversation, user_message.seq
+
+    # -------------------------------------------------------------------------
+    # Context resolution
+    # -------------------------------------------------------------------------
+    async def _resolve_context(
+        self, conversation: ChatConversation
+    ) -> dict[str, Any]:
+        """
+        Returns the analysis context the prompt is built from.
+
+        The analysis attached to this conversation wins when there is one, so
+        the thread always reasons on the live scores and recommendations. The
+        snapshot stored on the conversation is only a fallback, for threads
+        started without any analysis.
+
+        Note the consequence of reading live: re-running the analysis changes
+        the context of a conversation already under way.
+        """
+        analyse = await AnalyseRepository(self.db).get_for_conversation(
+            conversation.id
+        )
+
+        if analyse is not None:
+            return {
+                "cv_text": analyse.cv_text,
+                "job_description": analyse.job_description,
+                "score_global": analyse.score_global,
+                "recommandations": analyse.recommandations,
+                "source": "analyse",
+            }
+
+        return {
+            "cv_text": conversation.cv_text,
+            "job_description": conversation.job_description,
+            "score_global": conversation.score_global,
+            "recommandations": conversation.recommandations,
+            "source": "snapshot",
+        }
 
     # -------------------------------------------------------------------------
     # Phase 2 — stream the answer
@@ -188,17 +241,19 @@ class ChatAgentService:
             conversation.id, limit=HISTORY_WINDOW, before_seq=user_seq
         )
 
+        context = await self._resolve_context(conversation)
+
         initial_state = AgentChatState(
             language=conversation.language,
             provider=conversation.ai_provider,
             model=conversation.ai_model,
             api_key=api_key,
-            recommendations=_format_recommendations(conversation.recommandations),
-            score=str(conversation.score_global)
-            if conversation.score_global is not None
+            recommendations=_format_recommendations(context["recommandations"]),
+            score=str(context["score_global"])
+            if context["score_global"] is not None
             else "non calculé",
-            job_description=conversation.job_description or "",
-            cv=conversation.cv_text or "",
+            job_description=context["job_description"] or "",
+            cv=context["cv_text"] or "",
             messages=_to_lc_messages(history),
             user_message=question,
         )
@@ -212,6 +267,7 @@ class ChatAgentService:
                 "provider": conversation.ai_provider,
                 "model": conversation.ai_model,
                 "history_messages": len(history),
+                "context_source": context["source"],
             },
         )
 

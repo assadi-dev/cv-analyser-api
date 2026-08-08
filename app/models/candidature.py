@@ -40,6 +40,13 @@ class Candidature(BaseModel):
         nullable=True,
         comment="CV used for this application",
     )
+    analyse_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("analyses.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="AI analysis attached to this application, if any",
+    )
 
     # -------------------------------------------------------------------------
     # Company & position
@@ -96,9 +103,11 @@ class Candidature(BaseModel):
     contacts: Mapped[list["Contact"]] = relationship(
         "Contact", back_populates="candidature", cascade="all, delete-orphan"
     )
-    analyses: Mapped[list["Analyse"]] = relationship(
-        "Analyse", back_populates="candidature", cascade="all, delete-orphan"
-    )
+    # Single analysis, not a collection: the link is now carried here, so a
+    # candidature points at one analysis rather than owning a history of them.
+    # No cascade — the analysis belongs to the user and outlives the
+    # candidature (the FK is ON DELETE SET NULL).
+    analyse: Mapped["Analyse | None"] = relationship("Analyse")
 
     def __repr__(self) -> str:
         return f"<Candidature id={self.id} company={self.company_name} job={self.job_title}>"

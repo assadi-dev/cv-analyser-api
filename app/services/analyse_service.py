@@ -39,7 +39,7 @@ class AnalyseService:
         self,
         *,
         user_id: uuid.UUID,
-        candidature: Candidature,
+        candidature: Candidature | None,
         request: AnalyseRequest,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """
@@ -48,18 +48,21 @@ class AnalyseService:
         Flow:
         1. Resolve CV text (from request or stored file)
         2. Resolve AI provider config for the user
-        3. Build initial state and run the graph
-        4. Yield SSE events progressively
-        5. Persist results to database
-        6. Yield final "done" event with analyse_id
+        3. Create the Analyse row (so its id exists from the first event)
+        4. Build initial state and run the graph
+        5. Yield SSE events progressively
+        6. Persist the results onto the row
+        7. Yield final "done" event with analyse_id
 
         Args:
             user_id:      Authenticated user's UUID.
-            candidature:  The candidature being analysed.
+            candidature:  The candidature being analysed, or None for a
+                          standalone analysis.
             request:      Analysis request body.
 
         Yields:
-            SSE event dicts (progress, result, done, error).
+            SSE event dicts (progress, result, done, error), each carrying
+            analyse_id.
         """
         # ---------------------------------------------------------------
         # Step 1 — Resolve CV text
@@ -92,9 +95,31 @@ class AnalyseService:
             api_key = ProviderService.decrypt_api_key(preference.ai_api_key_encrypted)
 
         # ---------------------------------------------------------------
-        # Step 3 — Build initial graph state
+        # Step 3 — Create the analysis row up front
+        # ---------------------------------------------------------------
+        # Created before the pipeline so its id can travel with every SSE
+        # event, and so the graph nodes can reach the row through
+        # state["analyse_id"]. Scores are filled in at step 6.
+        analyse_repo = AnalyseRepository(self.db)
+        analyse = await analyse_repo.create_analyse(
+            user_id=user_id,
+            cv_id=request.cv_id,
+            job_description=request.job_description,
+            cv_text=cv_text,
+            ai_provider=preference.ai_provider,
+            ai_model=preference.ai_model,
+        )
+        # The association is carried by the candidature, in that direction only.
+        # It replaces whatever analysis the candidature pointed at before.
+        if candidature is not None:
+            await analyse_repo.attach_to_candidature(analyse, candidature)
+        await self.db.commit()
+
+        # ---------------------------------------------------------------
+        # Step 4 — Build initial graph state
         # ---------------------------------------------------------------
         initial_state = {
+            "analyse_id": str(analyse.id),
             "cv_text": cv_text,
             "job_text": request.job_description,
             "provider": preference.ai_provider,
@@ -119,14 +144,15 @@ class AnalyseService:
             "Analysis pipeline started",
             extra={
                 "user_id": str(user_id),
-                "candidature_id": str(candidature.id),
+                "analyse_id": str(analyse.id),
+                "candidature_id": str(candidature.id) if candidature else None,
                 "provider": preference.ai_provider,
                 "model": preference.ai_model,
             },
         )
 
         # ---------------------------------------------------------------
-        # Step 4 — Run graph and yield events
+        # Step 5 — Run graph and yield events
         # ---------------------------------------------------------------
         final_state: dict[str, Any] = {}
         yielded_event_count = 0
@@ -137,30 +163,15 @@ class AnalyseService:
                 # Slice from where we left off to yield only the new ones.
                 all_events: list[dict] = updates.get("stream_events", [])
                 for event in all_events[yielded_event_count:]:
-                    yield event
+                    yield {**event, "analyse_id": str(analyse.id)}
                 yielded_event_count = len(all_events)
                 final_state.update(updates)
 
         # ---------------------------------------------------------------
-        # Step 5 — Persist results
+        # Step 6 — Persist the results onto the row created at step 3
         # ---------------------------------------------------------------
-        analyse_repo = AnalyseRepository(self.db)
-        analyse = await analyse_repo.create(
-            candidature_id=candidature.id,
-            cv_id=request.cv_id,
-            job_description=request.job_description,
-            cv_text=cv_text,
-            score_global=final_state.get("score_global", 0),
-            score_ats=final_state.get("score_ats", 0),
-            score_competences=final_state.get("score_competences", 0),
-            score_experience=final_state.get("score_experience", 0),
-            keywords_found=final_state.get("keywords_found", []),
-            keywords_missing=final_state.get("keywords_missing", []),
-            recommandations=final_state.get("recommandations", []),
-            chat_history=[],
-            ai_provider=preference.ai_provider,
-            ai_model=preference.ai_model,
-        )
+        await analyse_repo.update_results(analyse, final_state=final_state)
+        await self.db.commit()
 
         logger.info(
             "Analysis completed and persisted",
@@ -172,7 +183,7 @@ class AnalyseService:
         )
 
         # ---------------------------------------------------------------
-        # Step 6 — Final "done" event
+        # Step 7 — Final "done" event
         # ---------------------------------------------------------------
         yield {"type": "done", "analyse_id": str(analyse.id)}
 
@@ -214,9 +225,27 @@ class AnalyseService:
             api_key = ProviderService.decrypt_api_key(preference.ai_api_key_encrypted)
 
         # ---------------------------------------------------------------
-        # Step 3 — Build initial graph state
+        # Step 3 — Create the analysis row up front
+        # ---------------------------------------------------------------
+        # Created before the pipeline runs so the id exists from the first SSE
+        # event: the client can attach a chat conversation to it without
+        # waiting for the analysis to finish. Scores are filled in at step 6.
+        # No candidature is attached — this analysis is standalone.
+        analyse_repo = AnalyseRepository(self.db)
+        analyse = await analyse_repo.create_analyse(
+            user_id=user_id,
+            cv_text=cv_text,
+            job_description=request.job_description,
+            ai_provider=preference.ai_provider,
+            ai_model=preference.ai_model,
+        )
+        await self.db.commit()
+
+        # ---------------------------------------------------------------
+        # Step 4 — Build initial graph state
         # ---------------------------------------------------------------
         initial_state = {
+            "analyse_id": str(analyse.id),
             "cv_text": cv_text,
             "job_text": request.job_description,
             "provider": preference.ai_provider,
@@ -241,13 +270,14 @@ class AnalyseService:
             "Analysis pipeline started",
             extra={
                 "user_id": str(user_id),
+                "analyse_id": str(analyse.id),
                 "provider": preference.ai_provider,
                 "model": preference.ai_model,
             },
         )
 
         # ---------------------------------------------------------------
-        # Step 4 — Run graph and yield events
+        # Step 5 — Run graph and yield events
         # ---------------------------------------------------------------
         final_state: dict[str, Any] = {}
         yielded_event_count = 0
@@ -256,20 +286,26 @@ class AnalyseService:
             for node_name, updates in step_output.items():
                 all_events: list[dict] = updates.get("stream_events", [])
                 for event in all_events[yielded_event_count:]:
-                    yield event
+                    yield {**event, "analyse_id": str(analyse.id)}
                 yielded_event_count = len(all_events)
                 final_state.update(updates)
 
+        # ---------------------------------------------------------------
+        # Step 6 — Persist the results onto the row created at step 3
+        # ---------------------------------------------------------------
+        await analyse_repo.update_results(analyse, final_state=final_state)
+        await self.db.commit()
+
         logger.info(
-            "Analysis completed",
+            "Analysis completed and persisted",
             extra={
-               
-                "score_global": final_state.get("score_global", 0),
-                "score_ats": final_state.get("score_ats", 0),
+                "analyse_id": str(analyse.id),
+                "score_global": analyse.score_global,
+                "score_ats": analyse.score_ats,
             },
         )
 
         # ---------------------------------------------------------------
-        # Step 6 — Final "done" event
+        # Step 7 — Final "done" event
         # ---------------------------------------------------------------
-        yield {"type": "done"}
+        yield {"type": "done", "analyse_id": str(analyse.id)}

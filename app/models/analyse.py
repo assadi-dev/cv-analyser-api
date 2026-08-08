@@ -10,16 +10,18 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseModel
 
 if TYPE_CHECKING:
-    from app.models.candidature import Candidature
+    from app.models.chat_conversation import ChatConversation
     from app.models.cv import CV
+    from app.models.user import User
 
 
 class Analyse(BaseModel):
     """
     Result of an AI analysis session.
 
-    One candidature can have multiple analyses over time
-    (e.g. after updating the CV).
+    An analysis stands on its own: ownership lives on user_id, and the link to
+    a candidature — when there is one — is carried by candidatures.analyse_id,
+    in that direction only.
     """
 
     __tablename__ = "analyses"
@@ -27,11 +29,12 @@ class Analyse(BaseModel):
     # -------------------------------------------------------------------------
     # Foreign keys
     # -------------------------------------------------------------------------
-    candidature_id: Mapped[uuid.UUID] = mapped_column(
+    user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("candidatures.id", ondelete="CASCADE"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
+        comment="Owner of the analysis — set even when there is no candidature",
     )
     cv_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
@@ -88,9 +91,20 @@ class Analyse(BaseModel):
         JSON, nullable=False, default=list,
         comment="List of AI-generated recommendations"
     )
-    chat_history: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSON, nullable=False, default=list,
-        comment="DEPRECATED - superseded by chat_conversations/chat_messages"
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "chat_conversations.id",
+            ondelete="SET NULL",
+            name="fk_analyses_conversation_id",
+        ),
+        nullable=True,
+        # unique: makes the 1:1 a guarantee rather than a convention, which is
+        # what lets the chat service resolve its analysis with a reverse query.
+        # Postgres allows any number of NULLs under a unique index, so
+        # analyses without a conversation are unaffected.
+        unique=True,
+        comment="Chat conversation attached to this analysis, if any"
     )
 
     # -------------------------------------------------------------------------
@@ -106,10 +120,9 @@ class Analyse(BaseModel):
     # -------------------------------------------------------------------------
     # Relationships
     # -------------------------------------------------------------------------
-    candidature: Mapped["Candidature"] = relationship(
-        "Candidature", back_populates="analyses"
-    )
+    user: Mapped["User"] = relationship("User", back_populates="analyses")
     cv: Mapped["CV | None"] = relationship("CV", back_populates="analyses")
+    conversation: Mapped["ChatConversation | None"] = relationship("ChatConversation")
 
     def __repr__(self) -> str:
         return (

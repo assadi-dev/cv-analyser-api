@@ -39,7 +39,11 @@ class ChatStreamRequest(AppBaseModel):
     )
     analyse_id: uuid.UUID | None = Field(
         default=None,
-        description="Link the conversation to a persisted analysis, when there is one.",
+        description=(
+            "Analysis to attach this conversation to. The link is recorded on "
+            "the analysis itself (analyses.conversation_id); the analysis must "
+            "belong to the caller."
+        ),
     )
 
     question: str = Field(..., min_length=1, max_length=4000, description="Question from user")
@@ -98,7 +102,6 @@ class ChatConversationSummary(IDSchema, TimestampSchema):
     last_message_at: datetime
     message_count: int
     is_archived: bool
-    analyse_id: uuid.UUID | None = None
     score_global: int | None = None
     ai_provider: str
     ai_model: str

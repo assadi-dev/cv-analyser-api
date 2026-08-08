@@ -48,32 +48,39 @@ async def stream_analyse(
     The client should open this with an EventSource or fetch + ReadableStream.
     Each event is a JSON-encoded line: data: {...}\\n\\n
     """
-    # Verify candidature ownership
-    cand_repo = CandidatureRepository(db)
-    candidature = await cand_repo.get_by_user_and_id(
-        uuid.UUID(user_id), body.candidature_id
-    )
-    if candidature is None:
-        raise NotFoundError(resource="Candidature", resource_id=str(body.candidature_id))
-
-    # Import here to avoid circular imports
-    from app.services.analyse_service import AnalyseService
+    # Verify candidature ownership — only when one is attached. Without it the
+    # analysis is standalone, and ownership rests on Analyse.user_id.
+    candidature = None
+    if body.candidature_id is not None:
+        cand_repo = CandidatureRepository(db)
+        candidature = await cand_repo.get_by_user_and_id(
+            uuid.UUID(user_id), body.candidature_id
+        )
+        if candidature is None:
+            raise NotFoundError(
+                resource="Candidature", resource_id=str(body.candidature_id)
+            )
 
     service = AnalyseService(db)
 
     async def event_generator():
         try:
-            async for event in service.run_stream(
+            async for event in service.run_stream_candidature(
                 user_id=uuid.UUID(user_id),
                 candidature=candidature,
                 request=body,
             ):
-                yield f"data: {json.dumps(event)}\n\n"
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         except Exception as exc:
             logger.error(
                 "SSE stream error",
                 exc_info=exc,
-                extra={"user_id": user_id, "candidature_id": str(body.candidature_id)},
+                extra={
+                    "user_id": user_id,
+                    "candidature_id": str(body.candidature_id)
+                    if body.candidature_id
+                    else None,
+                },
             )
             error_event = {
                 "type": "error",
@@ -129,7 +136,9 @@ async def analyse_temporary_task(
     service = AnalyseService(db)
     try:
         async for event in service.run_stream_anonymous(user_id=user_id, request=request):
-            await queue.put(f"data: {json.dumps(event)}\n\n")
+            # ensure_ascii=False : sinon json.dumps échappe les accents des
+            # recommandations en séquences \uXXXX dans les frames SSE.
+            await queue.put(f"data: {json.dumps(event, ensure_ascii=False)}\n\n")
     except Exception as exc:
         logger.error(
             "SSE stream error",
@@ -167,6 +176,7 @@ async def stream_analyse_temporary(
     """
     cv_service = CVService(db)
     cv_text = await cv_service.extract_cv_text(cv_file, user_id)
+ 
 
     if not cv_text or not cv_text.strip():
         raise UnprocessableError(

@@ -108,6 +108,7 @@ class CandidatureResponse(IDSchema, TimestampSchema):
 
     id: uuid.UUID
     cv_id: uuid.UUID | None
+    analyse_id: uuid.UUID | None = None
     company_name: str
     company_city: str | None
     company_region: str | None

@@ -19,6 +19,16 @@ class AnalyseState(TypedDict):
     # -------------------------------------------------------------------------
     # Input (set before graph execution)
     # -------------------------------------------------------------------------
+
+    analyse_id: str | None
+    """
+    Id of the Analyse row this run writes to. Used to retrieve the analyse in
+    the database from within a node.
+
+    Kept as str and not UUID: nodes may copy it into stream_events, which the
+    router serialises with json.dumps — a UUID would raise there.
+    """
+
     cv_text: str
     """Raw text extracted from the candidate's CV."""
 

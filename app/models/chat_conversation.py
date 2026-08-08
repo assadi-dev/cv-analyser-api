@@ -20,7 +20,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseModel
 
 if TYPE_CHECKING:
-    from app.models.analyse import Analyse
     from app.models.chat_message import ChatMessage
     from app.models.user import User
 
@@ -46,14 +45,6 @@ class ChatConversation(BaseModel):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-    )
-
-    analyse_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("analyses.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-        comment="Analyse this conversation was started from, when persisted",
     )
 
     # -------------------------------------------------------------------------
@@ -111,7 +102,8 @@ class ChatConversation(BaseModel):
     # Relationships
     # -------------------------------------------------------------------------
     user: Mapped["User"] = relationship("User", back_populates="conversations")
-    analyse: Mapped["Analyse | None"] = relationship("Analyse")
+    # No link to Analyse here: the association is carried by
+    # analyses.conversation_id, in that direction only.
     messages: Mapped[list["ChatMessage"]] = relationship(
         "ChatMessage",
         back_populates="conversation",
