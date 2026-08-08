@@ -23,11 +23,13 @@ class ChatStreamRequest(AppBaseModel):
     """
     Body of the streaming chat endpoint.
 
-    Two modes:
-      - new conversation:  cv_text + job_description (+ optional score /
-        recommandations / analyse_id) and no conversation_id;
+    Three modes:
+      - from an analysis:  analyse_id + question. The server reads the CV, the
+        job offer, the score and the recommendations from that analysis;
+      - standalone:        cv_text + job_description (+ optional score /
+        recommandations), for a thread with no analysis behind it;
       - resume:            conversation_id + question only. Any context sent
-        alongside is ignored — the stored snapshot wins.
+        alongside is ignored — the stored context wins.
     """
 
     conversation_id: uuid.UUID | None = Field(
@@ -60,9 +62,15 @@ class ChatStreamRequest(AppBaseModel):
 
     @model_validator(mode="after")
     def _require_context_on_first_message(self) -> "ChatStreamRequest":
-        if self.conversation_id is None and not (self.cv_text and self.job_description):
+        if self.conversation_id is not None or self.analyse_id is not None:
+            # Resuming, or attaching to an analysis the server will read the
+            # context from — nothing more is needed from the client.
+            return self
+
+        if not (self.cv_text and self.job_description):
             raise ValueError(
-                "cv_text and job_description are required when starting a new conversation"
+                "cv_text and job_description are required when starting a new "
+                "conversation without analyse_id"
             )
         return self
 

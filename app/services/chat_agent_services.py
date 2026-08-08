@@ -110,6 +110,12 @@ class ChatAgentService:
         """
         repo = ChatConversationRepository(self.db)
 
+        cv_text = body.cv_text or ""
+        job_description = body.job_description or ""
+        score_global = body.score_global or None
+        recommandations = body.recommandations or []
+        analyse_id = body.analyse_id or None
+
         if body.conversation_id is not None:
             conversation = await repo.get_for_user(body.conversation_id, user_id)
             if conversation is None:
@@ -135,14 +141,19 @@ class ChatAgentService:
                     raise NotFoundError(
                         resource="Analyse", resource_id=str(body.analyse_id)
                     )
+                
+                cv_text = analyse.cv_text
+                job_description = analyse.job_description
+                score_global = analyse.score_global
+                recommandations = analyse.recommandations
 
             conversation = await repo.create(
                 user_id=user_id,
                 title=body.question[:255],
-                cv_text=body.cv_text,
-                job_description=body.job_description,
-                score_global=body.score_global,
-                recommandations=body.recommandations or [],
+                cv_text=cv_text,
+                job_description=job_description,
+                score_global=score_global,
+                recommandations=recommandations,
                 ai_provider=preference.ai_provider,
                 ai_model=preference.ai_model,
                 language=preference.preferred_language,
