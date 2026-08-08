@@ -61,8 +61,9 @@ class ChatAgentService:
           - message  : la concaténation des chunks précédents (sans celui-ci)
           - complete : le message complet à cet instant (message + chunk)
 
-        Types d'événements : start → token* → done.
-        Sur "done", chunk est vide et message == complete == réponse finale.
+        Types d'événements : start → token* → complete.
+        Sur "complete" (fin du stream LLM), chunk est vide et
+        message == complete == réponse finale.
         """
          # ---------------------------------------------------------------
         # Step 2 — Resolve AI provider config

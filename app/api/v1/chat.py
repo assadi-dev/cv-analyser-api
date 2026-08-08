@@ -27,7 +27,7 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
     summary="Send a message to the AI assistant and stream the answer (SSE)",
     description=(
         "Runs the chat agent and streams the answer token by token using "
-        "Server-Sent Events (SSE). Events: start → token* → done (or error)."
+        "Server-Sent Events (SSE). Events: start → token* → complete (or error)."
     ),
 )
 async def chat_stream_chat_anonymously(
