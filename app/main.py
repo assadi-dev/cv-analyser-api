@@ -89,6 +89,7 @@ from app.api.v1.candidatures import router as candidatures_router
 from app.api.v1.cvs import router as cvs_router
 from app.api.v1.preferences import router as preferences_router
 from app.api.v1.account import router as account_router
+from app.api.v1.chat import router as chat_router
 
 API_PREFIX = "/api/v1"
 
@@ -98,6 +99,7 @@ app.include_router(candidatures_router, prefix=API_PREFIX)
 app.include_router(cvs_router, prefix=API_PREFIX)
 app.include_router(analyses_router, prefix=API_PREFIX)
 app.include_router(preferences_router, prefix=API_PREFIX)
+app.include_router(chat_router, prefix=API_PREFIX)
 
 
 # ---------------------------------------------------------------------------

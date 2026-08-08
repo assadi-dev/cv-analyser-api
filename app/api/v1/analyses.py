@@ -109,26 +109,7 @@ async def get_analyse(
     return AnalyseResponse.model_validate(analyse)
 
 
-@router.post(
-    "/chat",
-    response_model=ChatResponse,
-    summary="Send a message to the AI assistant on an existing analysis",
-)
-async def chat(
-    body: ChatMessageRequest,
-    user_id: str = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
-) -> ChatResponse:
-    repo = AnalyseRepository(db)
-    analyse = await repo.get_by_user_and_id(uuid.UUID(user_id), body.analyse_id)
-    if analyse is None:
-        raise NotFoundError(resource="Analyse", resource_id=str(body.analyse_id))
 
-    from app.services.analyse_service import AnalyseService
-    service = AnalyseService(db)
-    reply = await service.chat(analyse=analyse, message=body.message)
-
-    return ChatResponse(analyse_id=body.analyse_id, message=reply)
 
 
 # Sentinel pushed on the queue once the producer task is over. An explicit

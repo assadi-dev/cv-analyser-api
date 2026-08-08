@@ -92,6 +92,23 @@ class ChatMessageRequest(AppBaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
 
 
+class ChatMessageAnonymousRequest(AppBaseModel):
+    """Request to continue the chat conversation on an existing analysis."""
+
+    cv_text: str = Field(
+        ...,
+        description="CV text to analyse",
+    )
+    job_description: str = Field(
+        ...,
+        description="Raw job offer text",
+    )
+    question: str = Field(
+        ...,
+        description="Question from user",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Response schemas
 # ---------------------------------------------------------------------------
