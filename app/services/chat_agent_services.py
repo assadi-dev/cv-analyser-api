@@ -125,7 +125,7 @@ class ChatAgentService:
                 "type": "token",
                 "chunk": text,
                 "message": previous,
-                "complete": accumulated,
+                "complete": "",
             }
 
         self.logger.info("Chat reply generated (%d chars)", len(accumulated))
@@ -133,6 +133,6 @@ class ChatAgentService:
         yield {
             "type": "complete",
             "chunk": "",
-            "message": accumulated,
+            "message": "",
             "complete": accumulated,
         }
