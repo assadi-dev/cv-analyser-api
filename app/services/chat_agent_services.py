@@ -5,6 +5,7 @@ from app.models import Preference
 import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
+from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
 from app.services.provider_service import ProviderService
 from app.agents.agent_chat import agent_chat_graph
@@ -27,15 +28,12 @@ class ChatAgentService:
         preference_repo = PreferenceRepository(self.db)
         preference = await preference_repo.get_by_user_id(user_id)
 
+        if preference is None:
+            raise NotFoundError("No preference found for this user")
+
         api_key = ""
         if preference.ai_api_key_encrypted:
             api_key = ProviderService.decrypt_api_key(preference.ai_api_key_encrypted)
-
-        preference = await preference_repo.get_by_user_id(user_id)
-        
-        if preference is None:
-            return "No preference found"
-
 
         initialState = AgentChatState(
             language = "fr",
@@ -49,10 +47,10 @@ class ChatAgentService:
             messages = [],
             user_message = message,
         )
-        
-        graph_invoke = agent_chat_graph.invoke(initialState)
-        
-      
-        print(graph_invoke["messages"][-1].content)
-        
-        return "hello"
+        logger.info("initialstate : ", initialState)
+        final_state = await agent_chat_graph.ainvoke(initialState)
+
+        reply = final_state["messages"][-1].content
+        self.logger.info("Chat reply generated (%d chars)", len(reply))
+
+        return reply

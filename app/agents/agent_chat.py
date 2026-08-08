@@ -3,6 +3,7 @@ from app.agents import state
 from langchain.agents import create_agent
 from app.core.logging import get_logger
 from langgraph.graph import END, START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
@@ -10,7 +11,9 @@ from pydantic import BaseModel, Field
 
 logger = get_logger(__name__)
 
-from typing import Any, TypedDict
+from typing import Annotated, Any, TypedDict
+
+from langgraph.graph.message import add_messages
 
 
 class AgentChatState(TypedDict):
@@ -26,7 +29,7 @@ class AgentChatState(TypedDict):
     score:str
     job_description:str
     cv:str
-    messages:list[dict]
+    messages:Annotated[list, add_messages]
     user_message:str
 
 def _build_system_prompt(state: AgentChatState) -> str:
@@ -58,30 +61,35 @@ def _build_system_prompt(state: AgentChatState) -> str:
   """
 
 
-def resume_recommendation_node(state: AgentChatState) -> dict:
+async def resume_recommendation_node(state: AgentChatState) -> dict:
   """
-  
+  Répond à la question de l'utilisateur en se basant sur le CV, l'offre,
+  le score et les recommandations déjà calculés.
   """
-  recommendations = state.get("recommendations", "")
-  
   llm = ProviderService.get_llm(
             provider=state["provider"],
             model=state["model"],
             api_key=state["api_key"],
         )
 
+  user_message = HumanMessage(
+      content=f"question de l'utilisateur : \n {state['user_message']} \n reponds lui maintenant"
+  )
+
   messages = [
       SystemMessage(content=_build_system_prompt(state)),
-      HumanMessage(content= f"question de l'utilisateur : \n {state["user_message"]} \n reponds lui maintenant"),
+      user_message,
   ]
 
-  response = llm.invoke(messages)
-  return {"messages": response}
-  
+  response = await llm.ainvoke(messages)
+
+  # add_messages fusionne ces messages avec l'historique existant
+  return {"messages": [user_message, response]}
+
     
 
 
-def build_agent_chat_graph() -> StateGraph:
+def build_agent_chat_graph() -> CompiledStateGraph:
 
   graph = StateGraph(AgentChatState)
 

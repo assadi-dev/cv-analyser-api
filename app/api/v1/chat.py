@@ -33,6 +33,11 @@ async def chat_stream_chat_anonymously(
    
 
     service = ChatAgentService(db)
-    reply = await service.stream_chat_anonymously(user_id=uuid.UUID(user_id), cv_text=body.cv_text, job_description=body.job_description, message=body.question)
+    reply = await service.stream_chat_anonymously(
+        user_id=uuid.UUID(user_id),
+        cv_text=body.cv_text,
+        job_description=body.job_description,
+        message=body.question,
+    )
 
-    return "dddd"
+    return reply
