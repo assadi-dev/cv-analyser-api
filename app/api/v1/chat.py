@@ -50,7 +50,9 @@ async def chat_stream_chat_anonymously(
                 job_description=body.job_description,
                 message=body.question,
             ):
-                yield f"data: {json.dumps(event)}\n\n"
+                # ensure_ascii=False : sinon json.dumps échappe les accents
+                # en séquences \\uXXXX dans les frames SSE.
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         except asyncio.CancelledError:
             logger.info("Client déconnecté", extra={"user_id": user_id})
             raise
