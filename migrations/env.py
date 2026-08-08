@@ -21,6 +21,18 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+# Tables owned by better-auth on the Next.js side. They live in the same
+# database but are not part of Base.metadata, so autogenerate sees them as
+# "removed" and proposes dropping them — which would destroy every login.
+EXTERNAL_TABLES = {"user", "session", "account", "verification"}
+
+
+def include_object(object_, name, type_, reflected, compare_to) -> bool:
+    """Keeps externally-owned tables out of autogenerate and `alembic check`."""
+    if type_ == "table" and name in EXTERNAL_TABLES:
+        return False
+    return True
+
 
 def run_migrations_offline() -> None:
     """Run migrations in offline mode."""
@@ -30,13 +42,18 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection):
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+    )
     with context.begin_transaction():
         context.run_migrations()
 

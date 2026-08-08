@@ -21,7 +21,7 @@ from app.core.exceptions import NotFoundError, UnprocessableError
 from app.core.logging import get_logger
 from app.repositories.analyse_repo import AnalyseRepository
 from app.repositories.candidature_repo import CandidatureRepository
-from app.schemas.analyse import AnalyseRequest, AnalyseResponse, ChatMessageRequest, ChatResponse
+from app.schemas.analyse import AnalyseRequest, AnalyseResponse
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/analyses", tags=["Analyses"])

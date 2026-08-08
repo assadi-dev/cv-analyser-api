@@ -90,7 +90,7 @@ class Analyse(BaseModel):
     )
     chat_history: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON, nullable=False, default=list,
-        comment="Conversation history with the AI assistant"
+        comment="DEPRECATED - superseded by chat_conversations/chat_messages"
     )
 
     # -------------------------------------------------------------------------

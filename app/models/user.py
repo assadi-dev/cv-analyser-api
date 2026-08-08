@@ -16,8 +16,9 @@ from app.models.base import BaseModel
 
 if TYPE_CHECKING:
     from app.models.candidature import Candidature
+    from app.models.chat_conversation import ChatConversation
     from app.models.cv import CV
-    from app.models.settings import Settings
+    from app.models.preference import Preference
 
 
 class User(BaseModel):
@@ -66,6 +67,9 @@ class User(BaseModel):
     )
     candidatures: Mapped[list["Candidature"]] = relationship(
         "Candidature", back_populates="user", cascade="all, delete-orphan"
+    )
+    conversations: Mapped[list["ChatConversation"]] = relationship(
+        "ChatConversation", back_populates="user", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:

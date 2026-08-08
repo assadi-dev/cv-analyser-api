@@ -70,6 +70,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # allow_headers covers the request side only — without expose_headers a
+    # browser cannot read X-Conversation-Id off the chat stream response.
+    expose_headers=["X-Conversation-Id"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 

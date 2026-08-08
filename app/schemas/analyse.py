@@ -85,28 +85,8 @@ class AnalyseRequestTemporary(AppBaseModel):
     )
 
 
-class ChatMessageRequest(AppBaseModel):
-    """Request to continue the chat conversation on an existing analysis."""
-
-    analyse_id: uuid.UUID
-    message: str = Field(..., min_length=1, max_length=2000)
-
-
-class ChatMessageAnonymousRequest(AppBaseModel):
-    """Request to continue the chat conversation on an existing analysis."""
-
-    cv_text: str = Field(
-        ...,
-        description="CV text to analyse",
-    )
-    job_description: str = Field(
-        ...,
-        description="Raw job offer text",
-    )
-    question: str = Field(
-        ...,
-        description="Question from user",
-    )
+# Chat schemas live in app/schemas/chat.py — conversations are now persisted
+# in their own tables rather than in the analyses.chat_history JSON column.
 
 
 # ---------------------------------------------------------------------------
@@ -137,11 +117,3 @@ class AnalyseResponse(IDSchema, TimestampSchema):
     chat_history: list[dict[str, Any]]
     ai_provider: str
     ai_model: str
-
-
-class ChatResponse(AppBaseModel):
-    """Response from the AI assistant chat."""
-
-    analyse_id: uuid.UUID
-    message: str
-    role: Literal["assistant"] = "assistant"
