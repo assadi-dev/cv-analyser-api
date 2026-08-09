@@ -88,3 +88,26 @@ job-optimizer-api/
 ├── pyproject.toml     # Project dependencies & configuration
 └── alembic.ini       # Alembic configuration
 ```
+
+## AI Agents (LangGraph)
+
+Two LangGraph state graphs power the AI features:
+
+### Analysis pipeline (`app/agents/graph.py`) — 4 nodes
+Sequential pipeline that scores a CV against a job description:
+
+```
+START → parse_documents → compute_ats → compute_score → generate_recommendations → END
+```
+
+- `parse_documents` — validates and normalizes the input text
+- `compute_ats` — keyword extraction + ATS score
+- `compute_score` — LLM semantic scoring
+- `generate_recommendations` — LLM recommendation generation
+
+### Chat agent (`app/agents/agent_chat.py`) — 1 node
+Answers follow-up questions from the candidate, grounded in the CV, job description, score, and recommendations already computed:
+
+```
+START → agent → END
+```
