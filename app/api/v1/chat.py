@@ -77,9 +77,10 @@ async def chat_stream(
             )
             error_event = {
                 "type": "error",
-                "message": "Chat failed. Please try again.",
-                "error_code": "CHAT_FAILED",
                 "conversation_id": str(conversation.id),
+                "message": None,
+                "error": "Chat failed. Please try again.",
+                "complete": False,
             }
             yield f"data: {json.dumps(error_event, ensure_ascii=False)}\n\n"
 

@@ -133,8 +133,17 @@ class ChatConversationRepository(BaseRepository[ChatConversation]):
         role: str,
         content: str,
         is_partial: bool = False,
+        message_id: uuid.UUID | None = None,
     ) -> ChatMessage:
-        """Appends a message at the next free seq. Does not commit."""
+        """
+        Appends a message at the next free seq. Does not commit.
+
+        message_id lets the caller pick the primary key in advance — the
+        streaming path needs it, since every SSE frame carries the id of the
+        message being written while the row is only inserted at the end. Same
+        uuid4 the model would have generated at flush time, so no extra
+        collision risk; the primary key still rejects a double insert.
+        """
         message = ChatMessage(
             conversation_id=conversation_id,
             seq=await self.next_seq(conversation_id),
@@ -142,6 +151,8 @@ class ChatConversationRepository(BaseRepository[ChatConversation]):
             content=content,
             is_partial=is_partial,
         )
+        if message_id is not None:
+            message.id = message_id
         self.db.add(message)
         await self.db.flush()
         await self.db.refresh(message)

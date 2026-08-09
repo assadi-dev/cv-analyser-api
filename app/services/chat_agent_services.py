@@ -1,6 +1,7 @@
 import asyncio
 import uuid
 from collections.abc import AsyncGenerator
+from datetime import datetime, timezone
 from typing import Any
 
 import anyio
@@ -50,6 +51,49 @@ def _chunk_text(chunk: Any) -> str:
         )
 
     return ""
+
+
+def _utc_timestamp() -> str:
+    """Current UTC time, as the 'YYYY-MM-DD HH:MM:SS' string the client expects."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _chat_event(
+    event_type: str,
+    *,
+    conversation_id: uuid.UUID,
+    message_id: uuid.UUID | None = None,
+    chunk: str | None = None,
+    content: str = "",
+    message: str | None = None,
+    error: str | None = None,
+) -> dict[str, Any]:
+    """
+    Builds one SSE frame.
+
+    Single place where the wire format is defined, so start / token / complete
+    / error cannot drift apart.
+    """
+    event: dict[str, Any] = {
+        "type": event_type,
+        "conversation_id": str(conversation_id),
+        "message": message,
+        "complete": event_type == "complete",
+    }
+
+    if error is not None:
+        event["error"] = error
+
+    if message_id is not None:
+        event["data"] = {
+            "id": str(message_id),
+            "chunk": chunk,
+            "content": content,
+            "role": "assistant",
+            "timestamp": _utc_timestamp(),
+        }
+
+    return event
 
 
 def _to_lc_messages(rows: list[ChatMessage]) -> list[BaseMessage]:
@@ -223,14 +267,22 @@ class ChatAgentService:
         """
         Exécute le graphe de chat et émet les événements SSE au fil de l'eau.
 
-        Chaque événement porte les mêmes 3 propriétés :
-          - chunk    : le fragment reçu à cet instant
-          - message  : la concaténation des chunks précédents (sans celui-ci)
-          - complete : le message complet à cet instant (message + chunk)
+        Forme des frames (start → token* → complete, ou error) :
 
-        Types d'événements : start → token* → complete.
-        Sur "complete" (fin du stream LLM), chunk est vide et
-        message == complete == réponse finale.
+            {
+              "type": "start" | "token" | "complete" | "error",
+              "conversation_id": str,
+              "message": str | None,      # réponse finale sur "complete"
+              "error": str,               # sur "error" uniquement
+              "complete": bool,           # true sur "complete"
+              "data": {
+                "id": str,                # id du ChatMessage en base
+                "chunk": str | None,      # fragment de cet événement
+                "content": str,           # contenu accumulé jusqu'ici
+                "role": "assistant",
+                "timestamp": "YYYY-MM-DD HH:MM:SS"   # UTC
+              }
+            }
         """
         repo = ChatConversationRepository(self.db)
         preference_repo = PreferenceRepository(self.db)
@@ -282,15 +334,19 @@ class ChatAgentService:
             },
         )
 
-        yield {
-            "type": "start",
-            "chunk": "",
-            "message": "",
-            "complete": "",
-            "conversation_id": str(conversation.id),
-        }
-
+        # Allocated up front so every frame — including "start" — can carry the
+        # id of the row the answer will be stored under. Reused as the primary
+        # key when the message is finally inserted.
+        assistant_message_id = uuid.uuid4()
         accumulated = ""
+
+        yield _chat_event(
+            "start",
+            conversation_id=conversation.id,
+            message_id=assistant_message_id,
+            chunk=None,
+            content="",
+        )
 
         try:
             # stream_mode="messages" : chaque token produit par le LLM dans un nœud
@@ -307,16 +363,15 @@ class ChatAgentService:
                 if not text:
                     continue
 
-                previous = accumulated
                 accumulated += text
 
-                yield {
-                    "type": "token",
-                    "chunk": text,
-                    "message": previous,
-                    "complete": "",
-                    "conversation_id": str(conversation.id),
-                }
+                yield _chat_event(
+                    "token",
+                    conversation_id=conversation.id,
+                    message_id=assistant_message_id,
+                    chunk=text,
+                    content=accumulated,
+                )
 
         except asyncio.CancelledError:
             # T3 — the client hung up. Best effort: keep what was already shown
@@ -331,18 +386,30 @@ class ChatAgentService:
             # group, whose cancel scope re-delivers the cancellation on every
             # subsequent await — the write would never complete otherwise.
             with anyio.CancelScope(shield=True):
-                await self._persist_reply(conversation.id, accumulated, is_partial=True)
+                await self._persist_reply(
+                    conversation.id,
+                    accumulated,
+                    is_partial=True,
+                    message_id=assistant_message_id,
+                )
             raise
 
-        except Exception:
-            # The route catches broadly and yields an error frame, so nothing
-            # escapes to get_db — roll back explicitly or a half-written
-            # session would be committed at teardown.
-            await self.db.rollback()
-            raise
+        # No `except Exception: await self.db.rollback()` here, deliberately.
+        # An LLM failure unwinds LangGraph's own anyio task group, and touching
+        # the request session while that scope is unwinding raises
+        # MissingGreenlet — which replaced the real error and escaped past the
+        # route, so the client got a broken stream instead of an error frame.
+        # Nothing is pending on this session anyway: the question was committed
+        # in open_conversation (T1), everything here is a read, and the reply is
+        # written through its own session in _persist_reply.
 
         # T2 — normal end of stream.
-        await self._persist_reply(conversation.id, accumulated, is_partial=False)
+        await self._persist_reply(
+            conversation.id,
+            accumulated,
+            is_partial=False,
+            message_id=assistant_message_id,
+        )
 
         self.logger.info(
             "Chat reply generated (%d chars)",
@@ -350,19 +417,25 @@ class ChatAgentService:
             extra={"conversation_id": str(conversation.id)},
         )
 
-        yield {
-            "type": "complete",
-            "chunk": "",
-            "message": "",
-            "complete": accumulated,
-            "conversation_id": str(conversation.id),
-        }
+        yield _chat_event(
+            "complete",
+            conversation_id=conversation.id,
+            message_id=assistant_message_id,
+            chunk=None,
+            content=accumulated,
+            message=accumulated,
+        )
 
     # -------------------------------------------------------------------------
     # Persistence helper
     # -------------------------------------------------------------------------
     async def _persist_reply(
-        self, conversation_id: uuid.UUID, content: str, *, is_partial: bool
+        self,
+        conversation_id: uuid.UUID,
+        content: str,
+        *,
+        is_partial: bool,
+        message_id: uuid.UUID | None = None,
     ) -> None:
         """
         Stores the assistant's answer in its OWN session, then commits.
@@ -384,6 +457,7 @@ class ChatAgentService:
                     role="assistant",
                     content=content,
                     is_partial=is_partial,
+                    message_id=message_id,
                 )
                 conversation = await repo.get_by_id(conversation_id)
                 if conversation is not None:
