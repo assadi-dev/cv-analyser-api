@@ -114,6 +114,7 @@ class AnalyseResponse(IDSchema, TimestampSchema):
 
     user_id: uuid.UUID
     cv_id: uuid.UUID | None
+    job_description: str
     score_global: int
     score_ats: int
     score_competences: int
