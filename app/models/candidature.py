@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.models.analyse import Analyse
     from app.models.contact import Contact
     from app.models.cv import CV
+    from app.models.kanban import Kanban
     from app.models.user import User
 
 
@@ -108,6 +109,13 @@ class Candidature(BaseModel):
     # No cascade — the analysis belongs to the user and outlives the
     # candidature (the FK is ON DELETE SET NULL).
     analyse: Mapped["Analyse | None"] = relationship("Analyse")
+    # Board placement. One row per candidature, created alongside it and
+    # removed by CASCADE. See app/models/kanban.py for why `status` is
+    # duplicated between the two tables.
+    kanban: Mapped["Kanban | None"] = relationship(
+        "Kanban", back_populates="candidature", cascade="all, delete-orphan",
+        uselist=False,
+    )
 
     def __repr__(self) -> str:
         return f"<Candidature id={self.id} company={self.company_name} job={self.job_title}>"

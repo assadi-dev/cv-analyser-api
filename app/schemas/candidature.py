@@ -103,6 +103,43 @@ class CandidatureStatusResponse(AppBaseModel):
     id: uuid.UUID
     status: CandidatureStatus
 
+
+class CandidatureMove(AppBaseModel):
+    """
+    Schema for moving a card on the board (Kanban drag & drop).
+
+    Carries the neighbours framing the drop point rather than a position: the
+    board only knows the ids it renders, and the backend reads their live
+    positions. A stale client cache therefore cannot write a wrong rank.
+
+    `after_id` is the primary anchor — the card takes its position and pushes
+    it down. `before_id` only matters when dropping at the end of a column,
+    where there is no card after. Both null means an empty column.
+    """
+
+    status: CandidatureStatus
+    before_id: uuid.UUID | None = Field(
+        default=None, description="Candidature id of the card above the drop point"
+    )
+    after_id: uuid.UUID | None = Field(
+        default=None, description="Candidature id of the card below the drop point"
+    )
+
+
+class CandidatureMoveResponse(AppBaseModel):
+    """
+    Result of a board move: the placement the backend actually applied.
+
+    `status` is a plain `str`, matching CandidatureResponse and
+    CandidatureSummary — strict on the way in, permissive on the way out.
+    Returning both fields lets the board reconcile its optimistic update
+    without a refetch.
+    """
+
+    message: str = "candidature position has been updated"
+    status: str
+    position: int
+
 class CandidatureResponse(IDSchema, TimestampSchema):
     """Full candidature response with nested contacts."""
 
