@@ -75,8 +75,8 @@ uploads/
 *.sqlite3
 *.postgres
 
-# Alembic
-versions/
+# Alembic — migrations are versioned on purpose. Ignoring versions/ would
+# leave the schema unbuildable on any other machine.
 
 # OS
 Thumbs.db
