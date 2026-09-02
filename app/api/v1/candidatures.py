@@ -17,6 +17,8 @@ from app.repositories.candidature_repo import CandidatureRepository
 from app.repositories.contact_repo import ContactRepository
 from app.schemas.candidature import (
     CandidatureCreate,
+    CandidatureMove,
+    CandidatureMoveResponse,
     CandidatureResponse,
     CandidatureStatusUpdate,
     CandidatureSummary,
@@ -101,22 +103,19 @@ async def update_candidature(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> CandidatureResponse:
-    repo = CandidatureRepository(db)
-    candidature = await repo.get_by_user_and_id(uuid.UUID(user_id), candidature_id)
-    if candidature is None:
-        raise NotFoundError(resource="Candidature", resource_id=str(candidature_id))
-
-    updated = await repo.update(
-        candidature,
-        **body.model_dump(exclude_none=True),
+    # Goes through the service, not the repository: this payload may carry
+    # `status`, which has to be mirrored onto the board in the same
+    # transaction. See the debt note on app/models/kanban.py.
+    service = CandidatureService(db)
+    return await service.update_user_candidature(
+        candidature_id, body, uuid.UUID(user_id)
     )
-    return CandidatureResponse.model_validate(updated)
 
 
 @router.patch(
     "/{candidature_id}/status",
     response_model=CandidatureResponse,
-    summary="Update candidature status (Kanban drag & drop)",
+    summary="Update candidature status (status select on the list view)",
 )
 async def update_status(
     candidature_id: uuid.UUID,
@@ -124,22 +123,36 @@ async def update_status(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> CandidatureResponse:
-    repo = CandidatureRepository(db)
-    candidature = await repo.get_by_user_and_id(uuid.UUID(user_id), candidature_id)
-    if candidature is None:
-        raise NotFoundError(resource="Candidature", resource_id=str(candidature_id))
-
-    updated = await repo.update(candidature, status=body.status)
-
-    logger.info(
-        "Candidature status updated",
-        extra={
-            "user_id": user_id,
-            "candidature_id": str(candidature_id),
-            "new_status": body.status,
-        },
+    # No drop index here — the card lands at the end of its target column.
+    # Use /move for drag & drop, where the drop point matters.
+    service = CandidatureService(db)
+    return await service.set_status_candidature(
+        candidature_id, uuid.UUID(user_id), body.status
     )
-    return CandidatureResponse.model_validate(updated)
+
+
+@router.patch(
+    "/{candidature_id}/move",
+    response_model=CandidatureMoveResponse,
+    summary="Move a candidature on the Kanban board (drag & drop)",
+)
+async def move_candidature(
+    candidature_id: uuid.UUID,
+    body: CandidatureMove,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> CandidatureMoveResponse:
+    """
+    Places a card at an explicit rank, anchored on the cards framing the
+    drop point rather than on an index.
+
+    The board only knows the ids it renders; the backend reads their live
+    positions, so a stale client cache cannot write a wrong rank. Returns the
+    placement actually applied, which the board uses to reconcile its
+    optimistic update without refetching.
+    """
+    service = CandidatureService(db)
+    return await service.move_candidature(candidature_id, uuid.UUID(user_id), body)
 
 
 @router.delete(

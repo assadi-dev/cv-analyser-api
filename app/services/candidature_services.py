@@ -1,6 +1,4 @@
 
-from app.schemas.candidature import CandidatureStatusResponse
-from app.schemas.common import DeleteResponse
 from app.schemas.candidature import CandidatureUpdate
 from app.core.exceptions import NotFoundError
 from sqlalchemy.ext.asyncio.session import AsyncSession
@@ -76,7 +74,7 @@ class CandidatureService:
         return CandidatureResponse.model_validate(updated)
 
 
-    async def set_status_candidature(self, candidature_id: uuid.UUID, user_id: uuid.UUID, status: str) -> CandidatureStatusResponse:
+    async def set_status_candidature(self, candidature_id: uuid.UUID, user_id: uuid.UUID, status: str) -> CandidatureResponse:
         candidature = await self.candidature_repo.get_by_user_and_id(user_id, candidature_id)
         if candidature is None:
             raise NotFoundError(resource="Candidature", resource_id=str(candidature_id))
@@ -85,7 +83,15 @@ class CandidatureService:
         # so the card lands at the end of its target column.
         entry = await self._ensure_entry(user_id, candidature_id, updated.status)
         await self.kanban_repo.set_status(entry, status)
-        return CandidatureStatusResponse(id=updated.id, status=updated.status)
+        logger.info(
+                "Candidature status updated",
+                extra={
+                    "user_id": user_id,
+                    "candidature_id": str(candidature_id),
+                    "new_status": status,
+                },
+            )
+        return CandidatureResponse.model_validate(updated)
 
 
     async def move_candidature(self, candidature_id: uuid.UUID, user_id: uuid.UUID, inputs: CandidatureMove) -> CandidatureMoveResponse:
