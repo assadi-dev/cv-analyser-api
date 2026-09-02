@@ -11,7 +11,11 @@ from app.schemas.candidature import (
     CandidatureMove,
     CandidatureMoveResponse,
     CandidatureResponse,
+    CandidatureStatus,
+    CandidatureSummary,
+    KanbanBoardResponse,
 )
+from typing import get_args
 from app.core.logging import get_logger
 from app.factory.candidature_factory import CandidatureFactory
 import uuid
@@ -58,6 +62,33 @@ class CandidatureService:
             #await self.contact_repo.create_many(candidature.id, inputs.contacts) 
 
         return candidature_response
+
+
+    async def get_board(self, user_id: uuid.UUID) -> KanbanBoardResponse:
+        """
+        Builds the board: every column, cards already grouped and ordered.
+
+        The client renders this as-is — it groups nothing and sorts nothing,
+        which also removes any chance of the board and the API disagreeing on
+        what order a column is in.
+
+        Columns come from the CandidatureStatus literal rather than from the
+        data, so an empty column is still returned. Dropping empty columns
+        would make one disappear as its last card leaves, leaving nowhere to
+        drop a card back into.
+        """
+        columns: dict[str, list[CandidatureSummary]] = {
+            status: [] for status in get_args(CandidatureStatus)
+        }
+
+        for candidature, board_status in await self.candidature_repo.list_board_for_user(user_id):
+            # A status outside the known set would otherwise be silently
+            # dropped; give it a column rather than losing the card.
+            columns.setdefault(board_status, []).append(
+                CandidatureSummary.model_validate(candidature)
+            )
+
+        return KanbanBoardResponse(columns=columns)
 
 
     async def update_user_candidature(self, candidature_id: uuid.UUID, inputs: CandidatureUpdate, user_id: uuid.UUID) -> CandidatureResponse:

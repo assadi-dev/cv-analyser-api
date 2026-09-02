@@ -91,6 +91,39 @@ class CandidatureRepository(BaseRepository[Candidature]):
 
         return list(items_result.scalars().all()), count_result.scalar_one()
 
+    async def list_board_for_user(
+        self,
+        user_id: uuid.UUID,
+    ) -> list[tuple[Candidature, str]]:
+        """
+        Returns every candidature of a user with the column it belongs to,
+        ordered the way the board renders them.
+
+        Not paginated: a board shows all of its cards, and the client groups
+        nothing — the service hands back ready-made columns.
+
+        The join is a LEFT OUTER and the column falls back to
+        `candidatures.status`, so a candidature whose board entry is missing
+        still appears (sorted last in its column) instead of vanishing from
+        the board entirely.
+
+        Returns:
+            Tuples of (candidature, column) sorted by column, then rank.
+        """
+        effective_status = func.coalesce(Kanban.status, Candidature.status)
+
+        result = await self.db.execute(
+            select(Candidature, effective_status.label("board_status"))
+            .outerjoin(Kanban, Kanban.candidature_id == Candidature.id)
+            .where(Candidature.user_id == user_id)
+            .order_by(
+                effective_status,
+                Kanban.position.asc().nulls_last(),
+                Candidature.created_at.desc(),
+            )
+        )
+        return [(row[0], row[1]) for row in result.all()]
+
     async def get_by_user_and_id(
         self,
         user_id: uuid.UUID,

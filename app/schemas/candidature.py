@@ -175,3 +175,18 @@ class CandidatureSummary(IDSchema, TimestampSchema):
     company_country: str | None
     notes: str | None
     #contacts: list[ContactResponse] = Field(default_factory=list)
+
+
+class KanbanBoardResponse(AppBaseModel):
+    """
+    The board, ready to render: one entry per column, cards already ordered.
+
+    Shaped as `{status: [cards]}` because that is what the board component
+    consumes directly — the client groups nothing and sorts nothing.
+
+    Every known column is always present, empty ones included. Omitting them
+    would make a column disappear from the board as soon as its last card
+    leaves, and there would be nowhere left to drop a card back into.
+    """
+
+    columns: dict[str, list[CandidatureSummary]]
