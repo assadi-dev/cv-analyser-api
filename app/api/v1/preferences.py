@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user_id
+from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
 from app.repositories.user_repo import UserRepository
 from app.schemas.common import MessageResponse
@@ -117,7 +118,9 @@ async def test_ai_provider(
 
     repo = UserRepository(db)
     user = await repo.get_by_id_with_preferences(uuid.UUID(user_id))
+    if user.preferences is None:
+        raise NotFoundError("AI preferences")
 
-    return await ProviderService.test_provider(user)
+    return await ProviderService.test_provider(user.preferences)
 
 

@@ -5,7 +5,6 @@ Supports: OpenAI, Anthropic, Groq, Mistral, OpenRouter, Ollama.
 """
 
 import time
-from typing import Any
 
 from cryptography.fernet import Fernet
 from langchain_core.language_models import BaseChatModel
@@ -13,6 +12,7 @@ from langchain_core.language_models import BaseChatModel
 from app.core.config import settings
 from app.core.exceptions import AIProviderError
 from app.core.logging import get_logger
+from app.models.preference import Preference
 from app.schemas.user import AIProviderTestResponse
 
 logger = get_logger(__name__)
@@ -135,27 +135,28 @@ class ProviderService:
             ) from exc
 
     @staticmethod
-    async def test_provider(user: Any) -> AIProviderTestResponse:
+    async def test_provider(preferences: Preference) -> AIProviderTestResponse:
         """
         Tests the connection to the user's configured AI provider.
 
         Sends a minimal request to verify the API key and model are valid.
 
         Args:
-            user: User ORM instance with ai_provider, ai_model, ai_api_key_encrypted.
+            preferences: Preference ORM instance with ai_provider, ai_model,
+                ai_api_key_encrypted, ai_base_url.
 
         Returns:
             AIProviderTestResponse with success status and latency.
         """
-        provider: str = user.ai_provider
-        model: str = user.ai_model
+        provider: str = preferences.ai_provider
+        model: str = preferences.ai_model
 
         try:
             api_key = ""
-            if user.ai_api_key_encrypted:
-                api_key = ProviderService.decrypt_api_key(user.ai_api_key_encrypted)
+            if preferences.ai_api_key_encrypted:
+                api_key = ProviderService.decrypt_api_key(preferences.ai_api_key_encrypted)
 
-            llm = ProviderService.get_llm(provider, model, api_key)
+            llm = ProviderService.get_llm(provider, model, api_key, preferences.ai_base_url or "")
 
             start = time.monotonic()
             await llm.ainvoke("Say 'OK' in one word.")
