@@ -21,11 +21,11 @@ class PreferenceService:
         self.preference_repo = PreferenceRepository(db)
         self.user_repo = UserRepository(db)
 
-    def create_user_settings(self, user_id: str) -> None:
+    async def create_user_settings(self, user_id: str) -> None:
         """
         Create the settings for a user.
         """
-        self.preference_repo.create_settings(user_id)
+        await self.preference_repo.create_settings(user_id)
 
     async def get_user_preferences(self, user_id: str) -> PreferencesResponseByUser:
         """
@@ -70,11 +70,11 @@ class PreferenceService:
         
         return UserProfileUpdateResponse.model_validate(updated_user)
 
-    def clear_all_user_settings(self, user_id: str) -> None:
+    async def clear_all_user_settings(self, user_id: str) -> None:
         """
         Clear all the settings for a user.
         """
-        self.preference_repo.clear_all_user_settings(user_id)
+        await self.preference_repo.clear_all_user_settings(uuid.UUID(user_id))
 
 
     async def update_ai_provider(self, user_id: str, inputs: Any) -> ProviderPreferencesResponse:
