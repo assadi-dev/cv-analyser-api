@@ -80,18 +80,21 @@ class PreferenceService:
     async def update_ai_provider(self, user_id: str, inputs: Any) -> ProviderPreferencesResponse:
         """
         Update the AI provider for a user.
+
+        This is a full replace (PUT semantics): ai_api_key/ai_base_url are
+        written as-is, including None, so switching to a provider that
+        doesn't need a key (e.g. Ollama) clears the stored one. Setting
+        attributes directly bypasses BaseRepository.update(), which skips
+        None values (that skip is correct for partial/PATCH updates
+        elsewhere, but would silently keep the old key here).
         """
-        update_data = inputs.model_dump(exclude_none=True) if hasattr(inputs, "model_dump") else inputs
         user = await self.user_repo.get_by_id_with_preferences(uuid.UUID(user_id))
-        
-        await self.preference_repo.update(
-            user.preferences,
-            ai_provider=update_data.get("ai_provider"),
-            ai_model=update_data.get("ai_model"),
-            ai_base_url=update_data.get("ai_base_url"),
-            ai_api_key_encrypted=update_data.get("ai_api_key"),
-            preferred_language=update_data.get("preferred_language"),
-        )
+
+        user.preferences.ai_provider = inputs.ai_provider
+        user.preferences.ai_model = inputs.ai_model
+        user.preferences.ai_base_url = inputs.ai_base_url
+        user.preferences.ai_api_key_encrypted = inputs.ai_api_key
+
         await self.db.commit()
         await self.db.refresh(user)
         return ProviderPreferencesResponse.model_validate(user.preferences)
