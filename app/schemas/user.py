@@ -68,7 +68,7 @@ class AIProviderUpdate(AppBaseModel):
         description="Plain-text API key — stored encrypted at rest. "
                     "Omit for Ollama (no key required).",
     )
-    ollama_base_url: str | None = Field(
+    ai_base_url: str | None = Field(
         default=None,
         description="Local Ollama server URL (e.g. http://localhost:11434)",
     )
@@ -102,7 +102,7 @@ class UserResponse(IDSchema, TimestampSchema):
     auth_provider: str
     ai_provider: AIProvider
     ai_model: str
-    ai_api_key_encrypted: str | None = None
+    ai_api_key: str | None = None  # encrypted
     ai_base_url: str | None = None
     preferred_language: Language
     ats_threshold: int
@@ -139,7 +139,7 @@ class UserResponse(IDSchema, TimestampSchema):
                     # Flattened preference fields
                     "ai_provider": preferences.ai_provider,
                     "ai_model": preferences.ai_model,
-                    "ai_api_key_encrypted": preferences.ai_api_key_encrypted,
+                    "ai_api_key": preferences.ai_api_key_encrypted,
                     "ai_base_url": preferences.ai_base_url,
                     "preferred_language": preferences.preferred_language,
                     "ats_threshold": preferences.ats_threshold,
@@ -155,7 +155,7 @@ class UserResponse(IDSchema, TimestampSchema):
             if isinstance(preferences, dict):
                 data["ai_provider"] = preferences.get("ai_provider")
                 data["ai_model"] = preferences.get("ai_model")
-                data["ai_api_key_encrypted"] = preferences.get("ai_api_key_encrypted")
+                data["ai_api_key"] = preferences.get("ai_api_key_encrypted")
                 data["ai_base_url"] = preferences.get("ai_base_url")
                 data["preferred_language"] = preferences.get("preferred_language")
                 data["ats_threshold"] = preferences.get("ats_threshold")
@@ -164,6 +164,7 @@ class UserResponse(IDSchema, TimestampSchema):
 
 
         return data
+    
 
 
 

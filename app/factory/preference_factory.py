@@ -1,3 +1,4 @@
+from app.schemas.preference import ProviderPreferencesResponse
 from app.schemas.preference import PreferencesResponseByUser
 from app.core.preferences import PreferencesDefaultConfigs
 from app.models.preference import Preference
@@ -27,4 +28,17 @@ class PreferenceFactory:
             preferred_language=preference.preferred_language,
             ats_threshold=preference.ats_threshold,
             recommendation_detail=preference.recommendation_detail,
+            created_at=preference.created_at,
+            updated_at=preference.updated_at,
+        )
+
+
+    @staticmethod
+    def generate_provider_preferences(preference: Preference) -> ProviderPreferencesResponse:
+        return ProviderPreferencesResponse(
+            ai_provider=preference.ai_provider,
+            ai_model=preference.ai_model,
+            ai_base_url=preference.ai_base_url,
+            ai_api_key_encrypted=preference.ai_api_key_encrypted,
+            preferred_language=preference.preferred_language,
         )

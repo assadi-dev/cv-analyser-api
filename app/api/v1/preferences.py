@@ -2,6 +2,7 @@
 Settings router — user profile, AI provider, and preferences.
 """
 
+from app.schemas.preference import ProviderPreferencesResponse
 from app.factory.preference_factory import PreferenceFactory
 from app.schemas.preference import PreferenceUpdateRequest
 from app.schemas.user import UserProfileUpdateResponse
@@ -72,30 +73,29 @@ async def update_preferences(
 
 @router.put(
     "/ai-provider",
-    response_model=UserResponse,
+    response_model=ProviderPreferencesResponse,
     summary="Set active AI provider and API key",
 )
 async def update_ai_provider(
     body: AIProviderUpdate,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> UserResponse:
+) -> ProviderPreferencesResponse:
     from app.services.provider_service import ProviderService
 
     repo = UserRepository(db)
     user = await repo.get_by_id_with_preferences(uuid.UUID(user_id))
+
 
     # Encrypt API key before storing
     encrypted_key: str | None = None
     if body.ai_api_key:
         encrypted_key = ProviderService.encrypt_api_key(body.ai_api_key)
 
-    await repo.update(
-        user.preferences,
-        ai_provider=body.ai_provider,
-        ai_model=body.ai_model,
-        ai_api_key_encrypted=encrypted_key,
-    )
+    preference_service = PreferenceService(db)
+    await preference_service.update_ai_provider(user_id, body)
+
+ 
     await db.commit()
 
     logger.info(
@@ -103,7 +103,7 @@ async def update_ai_provider(
         extra={"user_id": user_id, "provider": body.ai_provider, "model": body.ai_model},
     )
     await db.refresh(user)
-    return UserResponse.model_validate(user)
+    return ProviderPreferencesResponse.model_validate(user)
 
 
 @router.post(

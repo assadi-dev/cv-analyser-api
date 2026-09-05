@@ -1,3 +1,4 @@
+from app.schemas.preference import ProviderPreferencesResponse
 from app.factory.preference_factory import PreferenceFactory
 from typing import Any
 from app.factory.user_factory import UserFactory
@@ -74,3 +75,23 @@ class PreferenceService:
         Clear all the settings for a user.
         """
         self.preference_repo.clear_all_user_settings(user_id)
+
+
+    async def update_ai_provider(self, user_id: str, inputs: Any) -> ProviderPreferencesResponse:
+        """
+        Update the AI provider for a user.
+        """
+        update_data = inputs.model_dump(exclude_none=True) if hasattr(inputs, "model_dump") else inputs
+        user = await self.user_repo.get_by_id_with_preferences(uuid.UUID(user_id))
+        
+        await self.preference_repo.update(
+            user.preferences,
+            ai_provider=update_data.get("ai_provider"),
+            ai_model=update_data.get("ai_model"),
+            ai_base_url=update_data.get("ai_base_url"),
+            ai_api_key_encrypted=update_data.get("ai_api_key"),
+            preferred_language=update_data.get("preferred_language"),
+        )
+        await self.db.commit()
+        await self.db.refresh(user)
+        return ProviderPreferencesResponse.model_validate(user.preferences)
