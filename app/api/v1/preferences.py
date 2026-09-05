@@ -88,14 +88,12 @@ async def update_ai_provider(
 
 
     # Encrypt API key before storing
-    encrypted_key: str | None = None
     if body.ai_api_key:
-        encrypted_key = ProviderService.encrypt_api_key(body.ai_api_key)
+        body.ai_api_key = ProviderService.encrypt_api_key(body.ai_api_key)
+    else: body.ai_api_key=None
 
     preference_service = PreferenceService(db)
     await preference_service.update_ai_provider(user_id, body)
-
- 
     await db.commit()
 
     logger.info(
