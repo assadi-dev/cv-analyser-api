@@ -59,6 +59,11 @@ async def upload_cv(
 )->CVResponse:
     cv_service = CVService(db)  
     result = await cv_upload_service.upload_cv(file, user_id)
+    # Read once, here, and kept with the CV: analyses then start from the text
+    # instead of parsing the file every time.
+    result = result.model_copy(
+        update={"extracted_text": await cv_service.extract_stored_text(result.file_path)}
+    )
     cv = await cv_service.create_cv(user_id, result)
     logger.info("CV created", extra={"user_id": user_id, "cv_id": str(cv.id)})
 

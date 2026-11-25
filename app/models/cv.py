@@ -55,6 +55,14 @@ class CV(BaseModel):
     )
 
     # -------------------------------------------------------------------------
+    # Content
+    # -------------------------------------------------------------------------
+    extracted_text: Mapped[str | None] = mapped_column(
+        Text, nullable=True,
+        comment="Plain text read from the file at upload; analyses use it instead of parsing the file again"
+    )
+
+    # -------------------------------------------------------------------------
     # Relationships
     # -------------------------------------------------------------------------
     user: Mapped["User"] = relationship("User", back_populates="cvs")

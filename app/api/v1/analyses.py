@@ -133,12 +133,15 @@ async def analyse_temporary_task(
     user_id: uuid.UUID,
     request: AnalyseRequestTemporary,
     candidature: Candidature | None = None,
+    cv_id: uuid.UUID | None = None,
 ) -> None:
     """
     Runs the analysis pipeline and pushes each SSE frame onto the queue.
 
     With a `candidature`, the analysis is recorded on it (and replaces the one
-    it pointed at before). Without, it stays standalone.
+    it pointed at before). Without, it stays standalone. `cv_id` is the stored
+    CV the text came from, recorded on the analysis; it only applies with a
+    candidature, the standalone pipeline does not keep one.
     """
     service = AnalyseService(db)
     try:
@@ -150,6 +153,7 @@ async def analyse_temporary_task(
                 candidature=candidature,
                 request=AnalyseRequest(
                     candidature_id=candidature.id,
+                    cv_id=cv_id,
                     cv_text=request.cv_text,
                     job_description=request.job_description,
                 ),
@@ -183,7 +187,14 @@ async def analyse_temporary_task(
 )
 async def stream_analyse_temporary(
     job_description: Annotated[str, Form(min_length=10, description="Raw job offer text")],
-    cv_file: Annotated[UploadFile, File(description="CV file to analyse")],
+    cv_file: Annotated[
+        UploadFile | None,
+        File(description="CV file to analyse — omit to use a stored CV through `cv_id`"),
+    ] = None,
+    cv_id: Annotated[
+        uuid.UUID | None,
+        Form(description="One of the user's stored CVs, used when no file is sent"),
+    ] = None,
     candidature_id: Annotated[
         uuid.UUID | None,
         Form(description="Candidature to attach the analysis to — omit for a standalone one"),
@@ -197,9 +208,16 @@ async def stream_analyse_temporary(
     Expects multipart/form-data — `job_description` as a text field and
     `cv_file` as a file upload. Sending a JSON body yields a 422.
 
+    The CV comes either from `cv_file` (read and thrown away, as before) or
+    from `cv_id`, one of the user's stored CVs whose text was kept at upload.
+    A file wins when both are sent.
+
     `candidature_id` is optional. When given, the user must own that
     candidature, and the resulting analysis is attached to it.
     """
+    if cv_file is None and cv_id is None:
+        raise UnprocessableError(detail="Send a CV file, or the id of one of your CVs.")
+
     # Resolved before streaming starts: once the response is open, a 404 can no
     # longer be reported as a status code.
     candidature = None
@@ -213,7 +231,13 @@ async def stream_analyse_temporary(
             )
 
     cv_service = CVService(db)
-    cv_text = await cv_service.extract_cv_text(cv_file, user_id)
+    if cv_file is not None:
+        cv_text = await cv_service.extract_cv_text(cv_file, user_id)
+        stored_cv_id = None
+    else:
+        # `cv_id` is not None here: the guard above rejected neither being sent.
+        cv_text = await cv_service.resolve_text(uuid.UUID(user_id), cv_id)  # type: ignore[arg-type]
+        stored_cv_id = cv_id
  
 
     if not cv_text or not cv_text.strip():
@@ -233,7 +257,7 @@ async def stream_analyse_temporary(
             )
             analyse_task = asyncio.create_task(
                 analyse_temporary_task(
-                    queue, db, uuid.UUID(user_id), analyse_request, candidature
+                    queue, db, uuid.UUID(user_id), analyse_request, candidature, stored_cv_id
                 )
             )
             while True:

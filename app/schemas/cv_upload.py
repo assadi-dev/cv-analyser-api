@@ -15,6 +15,10 @@ class CVUploadResult(AppBaseModel):
     file_size_kb: int = Field(..., description="CV file size in KB")
     file_path: str = Field(..., description="CV file path")
     key: str = Field(..., description="CV key")
+    extracted_text: str | None = Field(
+        default=None,
+        description="Text read from the file — None when it could not be read",
+    )
 
     @model_validator(mode="before")
     @classmethod

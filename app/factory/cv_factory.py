@@ -23,6 +23,7 @@ class CVFactory:
             file_size_kb=input.file_size_kb,
             key=input.key,
             is_default=False,
+            extracted_text=input.extracted_text,
         )
 
     @staticmethod

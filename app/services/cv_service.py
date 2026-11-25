@@ -8,7 +8,7 @@ from app.services.upload_servive import UploadService
 from app.services.cv_parser_services import CVParserService
 from fastapi import UploadFile
 from app.services.cv_upload_services import CVUploadService
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, UnprocessableError
 from app.schemas.cv import CVUpdateRequest
 from app.repositories.cv_repo import CVRepository
 from app.factory.cv_factory import CVFactory
@@ -16,6 +16,7 @@ from app.schemas.cv_upload import CVUploadResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import get_logger
 from app.models.cv import CV
+import asyncio
 import uuid
 from pathlib import Path
 
@@ -36,6 +37,56 @@ class CVService:
         Get all CVs for a user.
         """
         pass
+
+    async def extract_stored_text(self, file_path: str) -> str | None:
+        """
+        Reads the text of a CV file that is already on disk.
+
+        Returns None rather than raising when nothing can be read (scanned
+        PDF, corrupted or missing file): a CV that cannot be read is still a
+        CV the user may want to keep, and the failure is reported later, when
+        an analysis actually needs the text.
+        """
+        try:
+            # Parsing (OCR included) is blocking work: keep it off the event loop.
+            text = await asyncio.to_thread(ExtractTextService().extract_text, Path(file_path))
+        except Exception as exc:
+            logger.warning(
+                "CV text could not be extracted",
+                exc_info=exc,
+                extra={"file_path": file_path},
+            )
+            return None
+        return text.strip() or None
+
+    async def resolve_text(self, user_id: uuid.UUID, cv_id: uuid.UUID) -> str:
+        """
+        The text of one of the user's CVs, ready to be analysed.
+
+        Uses the text stored at upload. A CV uploaded before that column existed,
+        or whose first read failed, is read from its file once more and the
+        result kept for next time.
+
+        Raises:
+            NotFoundError:      The CV does not exist or is not the user's.
+            UnprocessableError: No text can be read from the file.
+        """
+        cv = await self.cv_repo.get_by_user_and_id(user_id, cv_id)
+        if cv is None:
+            raise NotFoundError(resource="CV", resource_id=str(cv_id))
+        if cv.extracted_text:
+            return cv.extracted_text
+
+        text = await self.extract_stored_text(CVFactory.get_absolute_cv_path(cv))
+        if not text:
+            raise UnprocessableError(
+                detail="No text could be extracted from the CV file.",
+                context={"cv_id": str(cv_id)},
+            )
+        cv.extracted_text = text
+        await self.db.flush()
+        return text
+
     async def create_cv(self, user_id: str, input: CVUploadResult) -> CV:
         """
         Create a new CV for a user.
