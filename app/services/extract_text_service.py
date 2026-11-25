@@ -69,7 +69,7 @@ class ExtractTextService:
             for page in doc:
                 pix = page.get_pixmap(dpi=settings.ocr_dpi)
                 img = Image.open(io.BytesIO(pix.tobytes(settings.ocr_image_bytes_format)))
-                text = pytesseract.image_to_string(img)
+                text = pytesseract.image_to_string(img, lang=settings.ocr_languages)
                 text_parts.append(text)
             doc.close()
 

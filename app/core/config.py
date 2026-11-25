@@ -102,7 +102,10 @@ class Settings(BaseSettings):
     # OCR
     # -------------------------------------------------------------------------
     ocr_dpi: int = Field(default=300)
-    ocr_languages: str = Field(default="eng")
+    # Tesseract language codes joined with "+". French first, English kept for
+    # the technical terms French CVs are full of. Each code needs its traineddata
+    # installed (apt: tesseract-ocr-fra; brew: tesseract-lang).
+    ocr_languages: str = Field(default="fra+eng")
     ocr_image_bytes_format: str = Field(default="png")
 
     # -------------------------------------------------------------------------

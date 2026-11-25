@@ -112,3 +112,37 @@ class TestExtractTextRouting:
         service.extract_text(docx_file)
 
         assert called == ["docx"]
+
+
+class TestOcrLanguage:
+    """The OCR must read the CV in the configured language, not Tesseract's default."""
+
+    def test_ocr_uses_the_configured_languages(
+        self, service: ExtractTextService, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        import pymupdf
+
+        from app.services import extract_text_service
+
+        pdf = tmp_path / "scan.pdf"
+        doc = pymupdf.open()
+        doc.new_page()
+        doc.save(pdf)
+        doc.close()
+
+        seen: list[str | None] = []
+
+        def fake_image_to_string(image, lang=None):
+            seen.append(lang)
+            return "Compétences"
+
+        monkeypatch.setattr(extract_text_service.settings, "ocr_languages", "fra+eng")
+        monkeypatch.setattr(extract_text_service.pytesseract, "image_to_string", fake_image_to_string)
+
+        assert service.extract_text_from_pdf_ocr(pdf) == "Compétences"
+        assert seen == ["fra+eng"]
+
+    def test_french_is_read_by_default(self):
+        from app.core.config import Settings
+
+        assert Settings.model_fields["ocr_languages"].default == "fra+eng"
