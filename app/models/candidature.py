@@ -83,6 +83,14 @@ class Candidature(BaseModel):
     )
 
     # -------------------------------------------------------------------------
+    # Job offer
+    # -------------------------------------------------------------------------
+    job_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True,
+        comment="Job offer text, kept with the application and used to pre-fill analyses"
+    )
+
+    # -------------------------------------------------------------------------
     # Status
     # -------------------------------------------------------------------------
     status: Mapped[str] = mapped_column(

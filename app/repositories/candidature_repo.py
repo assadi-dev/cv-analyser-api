@@ -31,6 +31,23 @@ class CandidatureRepository(BaseRepository[Candidature]):
         await self.db.refresh(candidature)
         return candidature
 
+    async def apply_changes(
+        self, candidature: Candidature, changes: dict[str, object]
+    ) -> Candidature:
+        """
+        Sets exactly the given fields, `None` included.
+
+        `BaseRepository.update` skips `None`, which is right for a generic
+        "set what I gave you" but leaves no way to clear a field. Here the
+        caller has already decided what is a change, so a `None` means "clear".
+        """
+        for field, value in changes.items():
+            if hasattr(candidature, field):
+                setattr(candidature, field, value)
+        await self.db.flush()
+        await self.db.refresh(candidature)
+        return candidature
+
     async def get_with_contacts(self, candidature_id: uuid.UUID) -> Candidature | None:
         """Fetches a candidature with its contacts eagerly loaded."""
         result = await self.db.execute(

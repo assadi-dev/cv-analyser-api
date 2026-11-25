@@ -17,6 +17,7 @@ from app.repositories.candidature_repo import CandidatureRepository
 from app.repositories.contact_repo import ContactRepository
 from app.schemas.candidature import (
     CandidatureCreate,
+    CandidatureDetail,
     CandidatureMove,
     CandidatureMoveResponse,
     CandidatureResponse,
@@ -75,21 +76,21 @@ async def create_candidature(
 
 @router.get(
     "/{candidature_id}",
-    response_model=CandidatureResponse,
-    summary="Get a candidature by ID",
+    response_model=CandidatureDetail,
+    summary="Get a candidature by ID, contacts included",
 )
 async def get_candidature(
     candidature_id: uuid.UUID,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
-) -> CandidatureResponse:
+) -> CandidatureDetail:
     repo = CandidatureRepository(db)
     candidature = await repo.get_by_user_and_id(
         uuid.UUID(user_id), candidature_id
     )
     if candidature is None:
         raise NotFoundError(resource="Candidature", resource_id=str(candidature_id))
-    return CandidatureResponse.model_validate(candidature)
+    return CandidatureDetail.model_validate(candidature)
 
 
 @router.patch(

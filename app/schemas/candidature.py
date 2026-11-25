@@ -1,9 +1,9 @@
 """Candidature and Contact Pydantic schemas."""
 
 import uuid
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field, HttpUrl, field_validator
+from pydantic import Field, HttpUrl, StringConstraints, field_validator
 
 from app.schemas.common import AppBaseModel, IDSchema, TimestampSchema
 
@@ -57,9 +57,12 @@ class CandidatureCreate(AppBaseModel):
 
     # Application data
     cv_id: uuid.UUID | None = Field(default=None)
-    job_description: str | None = Field(
-        default=None,
-        description="Job offer text — triggers AI analysis if provided",
+    # Required: the offer text is what an analysis of this candidature runs on,
+    # so one without it could never be pre-filled. Whitespace-only counts as
+    # missing. (Editing keeps it optional — see CandidatureUpdate.)
+    job_description: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)] = Field(
+        ...,
+        description="Job offer text, kept on the candidature and used to pre-fill analyses",
     )
     status: CandidatureStatus = Field(default="to_send")
     notes: str | None = Field(default=None)
@@ -88,8 +91,16 @@ class CandidatureUpdate(AppBaseModel):
     source_name: str | None = Field(default=None, max_length=255)
     source_url: str | None = None
     cv_id: uuid.UUID | None = None
+    job_description: str | None = None
     status: CandidatureStatus | None = None
     notes: str | None = None
+    contacts: list[ContactCreate] | None = Field(
+        default=None,
+        description=(
+            "Replaces the whole contact list when given. Omit it to leave the "
+            "contacts untouched; an empty list removes them all."
+        ),
+    )
 
 
 class CandidatureStatusUpdate(AppBaseModel):
@@ -157,7 +168,22 @@ class CandidatureResponse(IDSchema, TimestampSchema):
     source_url: str | None
     status: str
     notes: str | None
+    # Only here, not on the list summary: the text can be long and the list
+    # never shows it.
+    job_description: str | None = None
     #contacts: list[ContactResponse] = Field(default_factory=list)
+
+
+class CandidatureDetail(CandidatureResponse):
+    """
+    One candidature read in full, contacts included.
+
+    Kept apart from CandidatureResponse on purpose: the write endpoints build
+    that one from a row whose contacts are not loaded, and reading them there
+    would trigger a lazy load outside the async session.
+    """
+
+    contacts: list[ContactResponse] = Field(default_factory=list)
 
 
 class CandidatureSummary(IDSchema, TimestampSchema):

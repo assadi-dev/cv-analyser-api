@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio.session import AsyncSession
 from app.models.kanban import Kanban
 from app.repositories.candidature_repo import CandidatureRepository
 from app.repositories.contact_repo import ContactRepository
+from app.repositories.cv_repo import CVRepository
 from app.repositories.kanban_repo import KanbanRepository
 from app.schemas.candidature import (
     CandidatureCreate,
@@ -21,6 +22,22 @@ from app.factory.candidature_factory import CandidatureFactory
 import uuid
 logger = get_logger(__name__)
 
+# Optional columns a PATCH may clear by sending an explicit null. Every other
+# field is required (or has a default), so a null there is ignored rather than
+# written — the database would refuse it.
+CLEARABLE_FIELDS = frozenset(
+    {
+        "company_city",
+        "source_platform",
+        "source_name",
+        "source_url",
+        "cv_id",
+        "job_description",
+        "notes",
+    }
+)
+
+
 class CandidatureService:
     """
     Candidature use cases.
@@ -35,9 +52,24 @@ class CandidatureService:
         self.db = db
         self.candidature_repo = CandidatureRepository(db)
         self.contact_repo = ContactRepository(db)
+        self.cv_repo = CVRepository(db)
         self.kanban_repo = KanbanRepository(db)
 
+    async def _assert_cv_owned(self, user_id: uuid.UUID, cv_id: uuid.UUID | None) -> None:
+        """
+        Refuses a CV that is not the user's.
+
+        `cv_id` comes from the client, and a foreign key alone would happily
+        link someone else's CV. Answered as not found, like any other
+        resource the user does not own.
+        """
+        if cv_id is None:
+            return
+        if await self.cv_repo.get_by_user_and_id(user_id, cv_id) is None:
+            raise NotFoundError(resource="CV", resource_id=str(cv_id))
+
     async def create_candidature(self, inputs: CandidatureCreate, user_id: uuid.UUID) -> CandidatureResponse:
+        await self._assert_cv_owned(user_id, inputs.cv_id)
         candidature = CandidatureFactory.candidature_create_to_model(inputs, user_id)
         candidature = await self.candidature_repo.create_candidature(candidature)
         # Same transaction as the candidature itself: a card without a board
@@ -57,9 +89,8 @@ class CandidatureService:
                     "job_title": candidature.job_title
                 },
             )  
-        # Create contacts via repository
-        #if inputs.contacts:
-            #await self.contact_repo.create_many(candidature.id, inputs.contacts) 
+        if inputs.contacts:
+            await self.contact_repo.create_many(candidature.id, inputs.contacts)
 
         return candidature_response
 
@@ -95,7 +126,20 @@ class CandidatureService:
         candidature = await self.candidature_repo.get_by_user_and_id(user_id, candidature_id)
         if candidature is None:
             raise NotFoundError(resource="Candidature", resource_id=str(candidature_id))
-        updated = await self.candidature_repo.update(candidature, **inputs.model_dump(exclude_none=True))
+        # `exclude_unset`, not `exclude_none`: a field that is absent is left
+        # alone, while one sent as null is a request to clear it.
+        changes = {
+            field: value
+            for field, value in inputs.model_dump(exclude_unset=True).items()
+            if value is not None or field in CLEARABLE_FIELDS
+        }
+        # Contacts live in their own table: they are replaced as a whole, not
+        # set as a column. Left out of `changes` so they never reach setattr.
+        changes.pop("contacts", None)
+        await self._assert_cv_owned(user_id, changes.get("cv_id"))
+        updated = await self.candidature_repo.apply_changes(candidature, changes)
+        if inputs.contacts is not None:
+            await self.contact_repo.replace_all(candidature_id, inputs.contacts)
         # The generic update accepts `status` too. This is the write path that
         # gets forgotten — it reads as unrelated to the board — and it is how
         # the two status columns drift apart.

@@ -28,7 +28,7 @@ class CandidatureFactory:
             status=inputs.status,
             notes=inputs.notes,
             cv_id=inputs.cv_id,
-        
+            job_description=inputs.job_description,
         )
 
 
@@ -53,6 +53,7 @@ class CandidatureFactory:
             source_url=candidature.source_url,
             status=candidature.status,
             notes=candidature.notes,
+            job_description=candidature.job_description,
             created_at=candidature.created_at,
             updated_at=candidature.updated_at,
         )
