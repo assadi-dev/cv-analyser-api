@@ -2,6 +2,7 @@
 Analyses router — AI analysis with SSE streaming.
 """
 
+from app.models.candidature import Candidature
 from app.schemas.analyse import AnalyseRequestTemporary
 from app.services.analyse_service import AnalyseService
 from app.services.cv_service import CVService
@@ -131,11 +132,29 @@ async def analyse_temporary_task(
     db: AsyncSession,
     user_id: uuid.UUID,
     request: AnalyseRequestTemporary,
+    candidature: Candidature | None = None,
 ) -> None:
-    """Runs the analysis pipeline and pushes each SSE frame onto the queue."""
+    """
+    Runs the analysis pipeline and pushes each SSE frame onto the queue.
+
+    With a `candidature`, the analysis is recorded on it (and replaces the one
+    it pointed at before). Without, it stays standalone.
+    """
     service = AnalyseService(db)
     try:
-        async for event in service.run_stream_anonymous(user_id=user_id, request=request):
+        if candidature is None:
+            events = service.run_stream_anonymous(user_id=user_id, request=request)
+        else:
+            events = service.run_stream_candidature(
+                user_id=user_id,
+                candidature=candidature,
+                request=AnalyseRequest(
+                    candidature_id=candidature.id,
+                    cv_text=request.cv_text,
+                    job_description=request.job_description,
+                ),
+            )
+        async for event in events:
             # ensure_ascii=False : sinon json.dumps échappe les accents des
             # recommandations en séquences \uXXXX dans les frames SSE.
             await queue.put(f"data: {json.dumps(event, ensure_ascii=False)}\n\n")
@@ -165,6 +184,10 @@ async def analyse_temporary_task(
 async def stream_analyse_temporary(
     job_description: Annotated[str, Form(min_length=10, description="Raw job offer text")],
     cv_file: Annotated[UploadFile, File(description="CV file to analyse")],
+    candidature_id: Annotated[
+        uuid.UUID | None,
+        Form(description="Candidature to attach the analysis to — omit for a standalone one"),
+    ] = None,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
@@ -173,7 +196,22 @@ async def stream_analyse_temporary(
 
     Expects multipart/form-data — `job_description` as a text field and
     `cv_file` as a file upload. Sending a JSON body yields a 422.
+
+    `candidature_id` is optional. When given, the user must own that
+    candidature, and the resulting analysis is attached to it.
     """
+    # Resolved before streaming starts: once the response is open, a 404 can no
+    # longer be reported as a status code.
+    candidature = None
+    if candidature_id is not None:
+        candidature = await CandidatureRepository(db).get_by_user_and_id(
+            uuid.UUID(user_id), candidature_id
+        )
+        if candidature is None:
+            raise NotFoundError(
+                resource="Candidature", resource_id=str(candidature_id)
+            )
+
     cv_service = CVService(db)
     cv_text = await cv_service.extract_cv_text(cv_file, user_id)
  
@@ -194,7 +232,9 @@ async def stream_analyse_temporary(
                 job_description=job_description,
             )
             analyse_task = asyncio.create_task(
-                analyse_temporary_task(queue, db, uuid.UUID(user_id), analyse_request)
+                analyse_temporary_task(
+                    queue, db, uuid.UUID(user_id), analyse_request, candidature
+                )
             )
             while True:
                 frame = await queue.get()
