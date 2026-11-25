@@ -155,6 +155,15 @@ class UnprocessableError(AppError):
     error_code = "UNPROCESSABLE"
 
 
+class CVTextUnreadableError(UnprocessableError):
+    """
+    A CV was given but no text can be read from it (scanned PDF, image-only,
+    corrupted). A code of its own lets the client tell the user it is the CV at
+    fault and what to do, instead of a generic "unprocessable".
+    """
+    error_code = "CV_TEXT_UNREADABLE"
+
+
 # ---------------------------------------------------------------------------
 # 429 — Too Many Requests
 # ---------------------------------------------------------------------------

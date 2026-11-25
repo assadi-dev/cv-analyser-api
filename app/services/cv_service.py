@@ -8,7 +8,7 @@ from app.services.upload_servive import UploadService
 from app.services.cv_parser_services import CVParserService
 from fastapi import UploadFile
 from app.services.cv_upload_services import CVUploadService
-from app.core.exceptions import NotFoundError, UnprocessableError
+from app.core.exceptions import CVTextUnreadableError, NotFoundError
 from app.schemas.cv import CVUpdateRequest
 from app.repositories.cv_repo import CVRepository
 from app.factory.cv_factory import CVFactory
@@ -68,8 +68,8 @@ class CVService:
         result kept for next time.
 
         Raises:
-            NotFoundError:      The CV does not exist or is not the user's.
-            UnprocessableError: No text can be read from the file.
+            NotFoundError:        The CV does not exist or is not the user's.
+            CVTextUnreadableError: No text can be read from the file.
         """
         cv = await self.cv_repo.get_by_user_and_id(user_id, cv_id)
         if cv is None:
@@ -79,7 +79,7 @@ class CVService:
 
         text = await self.extract_stored_text(CVFactory.get_absolute_cv_path(cv))
         if not text:
-            raise UnprocessableError(
+            raise CVTextUnreadableError(
                 detail="No text could be extracted from the CV file.",
                 context={"cv_id": str(cv_id)},
             )

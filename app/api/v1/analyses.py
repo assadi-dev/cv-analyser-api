@@ -18,7 +18,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user_id
-from app.core.exceptions import NotFoundError, UnprocessableError
+from app.core.exceptions import (
+    CVTextUnreadableError,
+    InternalError,
+    NotFoundError,
+    UnprocessableError,
+)
 from app.core.logging import get_logger
 from app.repositories.analyse_repo import AnalyseRepository
 from app.repositories.candidature_repo import CandidatureRepository
@@ -232,7 +237,15 @@ async def stream_analyse_temporary(
 
     cv_service = CVService(db)
     if cv_file is not None:
-        cv_text = await cv_service.extract_cv_text(cv_file, user_id)
+        try:
+            cv_text = await cv_service.extract_cv_text(cv_file, user_id)
+        except InternalError as exc:
+            # A supported file that cannot be parsed (corrupted, protected):
+            # the CV is at fault, not the server.
+            raise CVTextUnreadableError(
+                detail="The CV file could not be read.",
+                context={"filename": cv_file.filename},
+            ) from exc
         stored_cv_id = None
     else:
         # `cv_id` is not None here: the guard above rejected neither being sent.
@@ -241,9 +254,9 @@ async def stream_analyse_temporary(
  
 
     if not cv_text or not cv_text.strip():
-        raise UnprocessableError(
+        raise CVTextUnreadableError(
             detail="No text could be extracted from the CV file.",
-            context={"filename": cv_file.filename},
+            context={"filename": cv_file.filename if cv_file else None, "cv_id": str(cv_id) if cv_id else None},
         )
 
 
