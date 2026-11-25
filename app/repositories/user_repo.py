@@ -91,7 +91,7 @@ class UserRepository(BaseRepository[User]):
         await self.delete(user)
 
 
-    async def get_user_by_id(self, user_id: str) -> User | None:
+    async def get_user_by_id(self, user_id: uuid.UUID | str) -> User | None:
         """Fetches a user by their ID."""
         result = await self.db.execute(
             select(User).where(User.id == user_id)

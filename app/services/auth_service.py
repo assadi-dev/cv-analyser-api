@@ -2,6 +2,8 @@
 
 
 
+import uuid
+
 from app.services.upload_servive import UploadService
 from app.factory.cv_factory import CVFactory
 from app.factory.user_factory import UserFactory
@@ -68,11 +70,21 @@ class AuthService:
 
     async def remove_user(self, user_id: str) -> None:
         """
-        Delete a user account.
+        Delete a user account and everything attached to it.
+
+        The ORM cascades on User remove the preferences, CVs, analyses, chat
+        conversations (and their messages) and candidatures (and their
+        contacts and kanban entries). The uploaded files are not in the
+        database, so their folder is removed separately.
+
+        Raises:
+            NotFoundError: No such user.
         """
+        # Parsed rather than used as-is: the id ends up in a filesystem path
+        # that is removed recursively, so only a well-formed UUID may reach it.
+        uid = uuid.UUID(user_id)
 
-
-        user = await self.user_repo.get_user_by_id(user_id)
+        user = await self.user_repo.get_user_by_id(uid)
         if not user:
             # Should not happen as it is called behind auth, but better be safe
             from app.core.exceptions import NotFoundError
@@ -80,6 +92,25 @@ class AuthService:
 
         await self.user_repo.delete_user(user)
         await self.db.commit()
-        user_folder = CVFactory.get_absolute_user_folder(user_id)
-        await self.upload_service.remove_folder_recursively(user_folder)
+        await self._remove_user_files(uid)
         logger.info(f"User {user_id} removed successfully")
+
+    async def _remove_user_files(self, user_id: uuid.UUID) -> None:
+        """
+        Removes the user's upload folder, without ever failing the removal.
+
+        This runs once the rows are committed, so an error raised here would
+        tell the client the account removal failed when it did not — and a
+        retry would then create a brand new account with another id, leaving
+        this folder orphaned for good. The failure is logged loudly instead,
+        with the folder, so it can be cleaned up by hand.
+        """
+        folder = CVFactory.get_absolute_user_folder(str(user_id))
+        try:
+            await self.upload_service.remove_folder_recursively(folder)
+        except OSError as exc:
+            logger.error(
+                "User files could not be removed",
+                exc_info=exc,
+                extra={"user_id": str(user_id), "folder": folder},
+            )
